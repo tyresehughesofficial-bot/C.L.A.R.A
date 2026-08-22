@@ -1,4 +1,8 @@
-# Triad AI Editor — Content Execution Engine Architecture
+# CLARA — Content Execution Engine Architecture
+
+CLARA = Content Learning Automated & Refinement Assistant (rebranded from
+"Triad T AI Editor" by user direction; Triad T Enterprise remains a brand
+profile inside the app, not the app's name).
 
 Governing document for evolving the baseline editor (`index.html`) into the
 AI Content Execution System. Written against the full 38-part specification.

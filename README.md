@@ -1,6 +1,9 @@
-# C.L.A.R.A — Triad T AI Editor
+# C.L.A.R.A
 
-Universal AI Content Execution Engine. `index.html` is the whole app —
+**C**ontent **L**earning **A**utomated & **R**efinement **A**ssistant —
+the universal AI Content Execution Engine (formerly the Triad T AI Editor;
+Triad T Enterprise lives on inside the app as a brand profile).
+`index.html` is the whole app —
 single file, no build step, no dependencies. Open it in any modern browser.
 `ARCHITECTURE.md` is the governing analysis and phase plan.
 

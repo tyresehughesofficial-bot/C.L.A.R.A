@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Triad T — AI Editor</title>
+<title>CLARA — AI Editor</title>
 <style>
 :root {
   --black: #080808;
@@ -28,7 +28,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; }
 body {
-  background: var(--black);
+  background-color: var(--black);
+  background-image:
+    radial-gradient(130% 55% at 50% -12%, rgba(216,178,106,0.34), rgba(216,178,106,0) 62%),
+    linear-gradient(180deg, #33250c 0%, #1b1307 26%, #0b0a07 58%, #040404 100%);
+  background-attachment: fixed;
   color: var(--white);
   font-family: var(--font-body);
   font-size: 13px;
@@ -36,10 +40,32 @@ body {
   flex-direction: column;
 }
 
+/* ============ CLARA NEON GRID BACKDROP ============ */
+.bg-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(rgba(240,208,128,0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240,208,128,0.16) 1px, transparent 1px),
+    linear-gradient(rgba(240,208,128,0.055) 3px, transparent 3px),
+    linear-gradient(90deg, rgba(240,208,128,0.055) 3px, transparent 3px),
+    linear-gradient(rgba(200,169,110,0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(200,169,110,0.07) 1px, transparent 1px);
+  background-size: 176px 176px, 176px 176px, 176px 176px, 176px 176px, 44px 44px, 44px 44px;
+  background-position: 0 0, 0 0, 0 -1px, -1px 0, 0 0, 0 0;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 48%, rgba(0,0,0,0.8));
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 48%, rgba(0,0,0,0.8));
+  animation: clara-grid-drift 90s linear infinite;
+}
+@keyframes clara-grid-drift {
+  to { background-position: 0 176px, 176px 0, 0 175px, 175px 0, 0 176px, 176px 0; }
+}
+
 /* ============ TOP BAR ============ */
 .topbar {
+  position: relative;
   height: 52px;
-  background: var(--off-black);
+  background: rgba(13,12,8,0.86);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--gray-dark);
   display: flex;
   align-items: center;
@@ -50,15 +76,11 @@ body {
 }
 .topbar-logo { display: flex; align-items: center; gap: 10px; }
 .topbar-mark {
-  width: 30px; height: 30px;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--accent), #8a6d3a);
+  width: 32px; height: 32px;
   display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 15px;
-  color: #0a0a0a;
+  filter: drop-shadow(0 0 6px rgba(200,169,110,0.45));
 }
+.topbar-mark svg { width: 100%; height: 100%; display: block; }
 .topbar-title {
   font-family: var(--font-display);
   font-weight: 900;
@@ -111,6 +133,8 @@ body {
 
 /* ============ MAIN LAYOUT ============ */
 .main {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: grid;
   grid-template-columns: 264px 1fr 324px;
@@ -121,7 +145,7 @@ body {
 /* ============ SHARED PANEL TABS ============ */
 .ptab-row {
   display: flex; gap: 0;
-  background: var(--off-black);
+  background: transparent;
   border-bottom: 1px solid var(--gray-dark);
   flex-shrink: 0;
   overflow-x: auto;
@@ -143,7 +167,8 @@ body {
 
 /* ---- LEFT PANEL ---- */
 .panel-left {
-  background: var(--off-black);
+  background: rgba(14,13,9,0.84);
+  backdrop-filter: blur(12px);
   border-right: 1px solid var(--gray-dark);
   display: flex;
   flex-direction: column;
@@ -274,7 +299,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 .panel-center {
   display: flex;
   flex-direction: column;
-  background: #050505;
+  background: transparent;
   overflow: hidden;
   min-height: 0;
 }
@@ -389,7 +414,8 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 .dock {
   flex-shrink: 0;
   border-top: 1px solid var(--gray-dark);
-  background: var(--off-black);
+  background: rgba(13,12,8,0.86);
+  backdrop-filter: blur(12px);
   display: flex;
   flex-direction: column;
   height: clamp(230px, 34vh, 320px);
@@ -564,7 +590,8 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 
 /* ---- RIGHT PANEL ---- */
 .panel-right {
-  background: var(--off-black);
+  background: rgba(14,13,9,0.84);
+  backdrop-filter: blur(12px);
   border-left: 1px solid var(--gray-dark);
   display: flex;
   flex-direction: column;
@@ -762,13 +789,39 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 </style>
 </head>
 <body>
+<div class="bg-grid" aria-hidden="true"></div>
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div class="topbar-logo">
-    <div class="topbar-mark">T</div>
+  <div class="topbar-logo" title="C.L.A.R.A — Content Learning Automated & Refinement Assistant">
+    <div class="topbar-mark">
+      <svg viewBox="0 0 32 32" role="img" aria-label="CLARA logo">
+        <defs>
+          <linearGradient id="claraGold" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#f6dd9a"/>
+            <stop offset="0.55" stop-color="#c8a96e"/>
+            <stop offset="1" stop-color="#8a6d3a"/>
+          </linearGradient>
+          <filter id="claraGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="1.3" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <rect x="1" y="1" width="30" height="30" rx="8" fill="#070605" stroke="url(#claraGold)" stroke-opacity="0.7"/>
+        <path d="M9 1.5v29M17 1.5v29M25 1.5v29M1.5 9h29M1.5 17h29M1.5 25h29" stroke="#c8a96e" stroke-opacity="0.10" stroke-width="0.6"/>
+        <path d="M22.7 10 A9 9 0 1 0 22.7 22" fill="none" stroke="url(#claraGold)" stroke-width="2.6" stroke-linecap="round" filter="url(#claraGlow)"/>
+        <path d="M22.7 10 L26.2 8.1 M22.7 22 L26.2 23.9" stroke="url(#claraGold)" stroke-width="1.3" stroke-linecap="round"/>
+        <circle cx="27.3" cy="7.5" r="1.5" fill="#f6dd9a" filter="url(#claraGlow)">
+          <animate attributeName="opacity" values="1;0.3;1" dur="2.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="27.3" cy="24.5" r="1.5" fill="#f6dd9a" filter="url(#claraGlow)">
+          <animate attributeName="opacity" values="0.3;1;0.3" dur="2.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="16" cy="16" r="1.6" fill="url(#claraGold)"/>
+      </svg>
+    </div>
     <div>
-      <div class="topbar-title">TRIAD T — AI EDITOR</div>
+      <div class="topbar-title" style="letter-spacing:0.22em;">CLARA</div>
       <div class="topbar-sub">CONTENT EXECUTION ENGINE</div>
     </div>
   </div>
@@ -1113,7 +1166,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
   <!-- ============ RIGHT PANEL ============ -->
   <div class="panel-right">
     <div class="ptab-row" id="rightTabs">
-      <button class="ptab active" data-rtab="chat">Triad AI</button>
+      <button class="ptab active" data-rtab="chat">CLARA</button>
       <button class="ptab" data-rtab="director">Director</button>
       <button class="ptab" data-rtab="qc">QC</button>
     </div>
@@ -1121,7 +1174,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
     <div class="rpanel-body active" id="rtab-chat">
       <div class="chat-body" id="chatBody">
         <div class="chat-welcome">
-          <b>Triad AI — Content Execution Engine.</b> No AI backend is connected yet, so I won't pretend: what runs today runs locally, and I'll tell you exactly which agent and backend each request is waiting on. Try a command:
+          <b>CLARA — Content Learning Automated &amp; Refinement Assistant.</b> No AI backend is connected yet, so I won't pretend: what runs today runs locally, and I'll tell you exactly which agent and backend each request is waiting on. Try a command:
           <div class="chat-quick-grid">
             <button class="chat-quick-btn" data-cmd="help">What can you do?</button>
             <button class="chat-quick-btn" data-cmd="score my hook">Score my hook</button>
@@ -1133,7 +1186,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
         </div>
       </div>
       <div class="chat-input-wrap">
-        <textarea class="chat-input" id="chatInput" placeholder="Tell Triad AI what to do…" rows="1"></textarea>
+        <textarea class="chat-input" id="chatInput" placeholder="Tell CLARA what to do…" rows="1"></textarea>
         <button class="chat-send" id="chatSend">➤</button>
       </div>
     </div>
@@ -1179,7 +1232,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 
 <script>
 /* ============================================================
-   TRIAD AI — CONTENT EXECUTION ENGINE (Phase 1)
+   CLARA — CONTENT EXECUTION ENGINE (Phase 1)
    Layer order (each depends only on layers above):
    1 utils  2 reference libraries  3 models  4 capability registry
    5 store  6 agents  7 router  8 media engine  9 UI  10 init
@@ -1529,7 +1582,7 @@ const Capabilities = {
   "render.roughcut":    { name:"Rough cut generation", status:"MEDIA", unlock:"Rendering engine (Phase 7)" },
   "render.export":      { name:"Video export", status:"MEDIA", unlock:"Rendering engine (Phase 7)" },
   "project.persist":    { name:"Project persistence + JSON export/import", status:"LOCAL", unlock:null },
-  "chat.commands":      { name:"Triad AI chat — command router", status:"LOCAL", unlock:"Natural-language understanding via AI (Phase 2)" },
+  "chat.commands":      { name:"CLARA chat — command router", status:"LOCAL", unlock:"Natural-language understanding via AI (Phase 2)" },
   "analytics.entry":    { name:"Performance analytics entry/import", status:"SCHEMA", unlock:"Backend storage + platform APIs (Phase 8)" },
   "learning.loop":      { name:"Learning system (Content DNA)", status:"SCHEMA", unlock:"Backend + accumulated results (Phase 8)" },
 };
