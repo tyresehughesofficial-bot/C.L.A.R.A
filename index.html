@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triad T — AI Editor</title>
+<style>
+:root {
+  --black: #080808;
+  --off-black: #111;
+  --charcoal: #1a1a1a;
+  --gray-dark: #2a2a2a;
+  --gray-mid: #555;
+  --gray-light: #888;
+  --white: #f0ece4;
+  --accent: #c8a96e;
+  --accent-dim: rgba(200,169,110,0.12);
+  --red: #e03c31;
+  --green: #2eab5e;
+  --blue: #3b7de8;
+  --font-display: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  --font-mono: 'Courier New', 'Consolas', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============ TOP BAR ============ */
+.topbar {
+  height: 52px;
+  background: var(--off-black);
+  border-bottom: 1px solid var(--gray-dark);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+.topbar-logo { display: flex; align-items: center; gap: 10px; }
+.topbar-mark {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent), #8a6d3a);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 15px;
+  color: #0a0a0a;
+}
+.topbar-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-size: 14px;
+  color: var(--white);
+}
+.topbar-sub {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--gray-light);
+  letter-spacing: 0.14em;
+  margin-top: 1px;
+}
+.badge-ready {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(46,171,94,0.1);
+  border: 1px solid rgba(46,171,94,0.3);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 10px;
+  color: var(--green);
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+.btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--gray-dark);
+  background: transparent;
+  color: var(--gray-light);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #0a0a0a; font-weight: 700; }
+.btn.primary:hover { opacity: 0.85; color: #0a0a0a; }
+
+/* ============ MAIN LAYOUT ============ */
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr 300px;
+  overflow: hidden;
+}
+
+/* ---- LEFT: MEDIA PANEL ---- */
+.panel-left {
+  background: var(--off-black);
+  border-right: 1px solid var(--gray-dark);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.panel-header {
+  padding: 14px 16px 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--gray-light);
+  border-bottom: 1px solid var(--gray-dark);
+}
+.dropzone {
+  margin: 14px;
+  border: 1.5px dashed var(--gray-dark);
+  border-radius: 10px;
+  padding: 24px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.dropzone:hover { border-color: var(--accent); background: var(--accent-dim); }
+.dropzone-icon { font-size: 20px; color: var(--gray-light); margin-bottom: 8px; }
+.dropzone-text { font-size: 11px; color: var(--gray-light); line-height: 1.5; }
+.dropzone-sub { font-family: var(--font-mono); font-size: 9px; color: var(--gray-mid); margin-top: 6px; letter-spacing: 0.06em; }
+
+.quick-actions { padding: 6px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.qa-btn {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  background: var(--charcoal);
+  border: 1px solid var(--gray-dark);
+  color: var(--white);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.qa-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+.qa-icon { font-size: 13px; }
+
+/* ---- CENTER: PREVIEW + TIMELINE ---- */
+.panel-center {
+  display: flex;
+  flex-direction: column;
+  background: #050505;
+  overflow: hidden;
+}
+.preview-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+  padding: 20px;
+}
+.preview-canvas-frame {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 16/10;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--gray-dark);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+.preview-canvas-frame canvas { width: 100%; height: 100%; display: block; }
+.preview-caption {
+  position: absolute; bottom: 16px; left: 16px; right: 16px;
+  text-align: center;
+  transition: all 0.3s;
+}
+.preview-caption span {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  font-weight: 700;
+  transition: all 0.3s;
+}
+.preview-style-tag {
+  position: absolute; top: 12px; left: 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  backdrop-filter: blur(6px);
+  transition: all 0.3s;
+}
+.preview-controls {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  padding: 10px 0 4px;
+}
+.transport-btn {
+  background: none; border: none; color: var(--gray-light);
+  font-size: 15px; cursor: pointer; transition: color 0.15s;
+}
+.transport-btn:hover { color: var(--white); }
+.play-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--white); color: #0a0a0a;
+  display: flex; align-items: center; justify-content: center;
+  border: none; cursor: pointer; font-size: 13px;
+}
+.timecode {
+  font-family: var(--font-mono); font-size: 10px; color: var(--gray-light);
+  padding: 6px 0;
+  text-align: center;
+}
+.timecode span { color: var(--accent); }
+
+/* Trim toolbar (from your source) */
+.trim-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  background: var(--off-black);
+  border-top: 1px solid var(--gray-dark);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.trim-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--gray-dark);
+  background: transparent;
+  color: var(--gray-light);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.trim-btn:hover { border-color: var(--accent); color: var(--accent); }
+.trim-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.trim-btn.danger:hover { border-color: var(--red); color: var(--red); }
+.trim-btn.go { background: var(--green); border-color: var(--green); color: #fff; }
+.trim-btn.go:hover { opacity: 0.85; color: #fff; }
+.trim-divider { width: 1px; height: 20px; background: var(--gray-dark); }
+.trim-readout { font-family: var(--font-mono); font-size: 10px; color: var(--gray-light); letter-spacing: 0.08em; margin-left: auto; }
+.trim-readout span { color: var(--accent); font-weight: 700; }
+
+/* Timeline track */
+.timeline-track { position: relative; height: 64px; background: var(--off-black); border-top: 1px solid var(--gray-dark); padding: 10px 16px; }
+.timeline-bar { position: relative; height: 34px; background: var(--charcoal); border-radius: 6px; overflow: hidden; }
+.timeline-fill { position: absolute; top:0; left:0; bottom:0; width: 22%; background: linear-gradient(90deg, var(--accent), #8a6d3a); opacity: 0.4; }
+.timeline-playhead { position: absolute; top:0; bottom:0; width: 2px; background: var(--white); left: 22%; box-shadow: 0 0 6px rgba(255,255,255,0.6); }
+
+/* ---- PRESET RAIL ---- */
+.preset-rail {
+  border-top: 1px solid var(--gray-dark);
+  background: var(--off-black);
+  padding: 12px 16px 14px;
+  flex-shrink: 0;
+}
+.preset-rail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.preset-rail-title {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em; color: var(--gray-light);
+}
+.preset-rail-active {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em;
+}
+.preset-scroll {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+}
+.preset-scroll::-webkit-scrollbar { height: 4px; }
+.preset-scroll::-webkit-scrollbar-thumb { background: var(--gray-dark); border-radius: 2px; }
+.preset-chip {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 13px;
+  border-radius: 8px;
+  background: var(--charcoal);
+  border: 1.5px solid var(--gray-dark);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.preset-chip:hover { border-color: rgba(255,255,255,0.25); }
+.preset-chip.active { background: rgba(255,255,255,0.06); }
+.preset-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.preset-chip-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--gray-light); white-space: nowrap; }
+.preset-chip.active .preset-chip-label { color: var(--white); font-weight: 700; }
+
+/* ---- RIGHT: AI CHAT ---- */
+.panel-right {
+  background: var(--off-black);
+  border-left: 1px solid var(--gray-dark);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chat-header {
+  padding: 14px 16px; border-bottom: 1px solid var(--gray-dark);
+  display: flex; align-items: center; gap: 8px;
+}
+.chat-header-title { font-family: var(--font-display); font-weight: 900; font-size: 12px; letter-spacing: 0.06em; }
+.chat-header-sub { font-family: var(--font-mono); font-size: 8.5px; color: var(--gray-light); letter-spacing: 0.1em; }
+.chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chat-welcome {
+  background: var(--charcoal);
+  border: 1px solid var(--gray-dark);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--gray-light);
+}
+.chat-welcome b { color: var(--white); }
+.chat-quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+.chat-quick-btn {
+  font-size: 10px; font-family: var(--font-mono); letter-spacing: 0.04em;
+  padding: 8px 6px; border-radius: 6px;
+  background: var(--off-black); border: 1px solid var(--gray-dark);
+  color: var(--gray-light); cursor: pointer; text-align: center;
+  transition: all 0.15s;
+}
+.chat-quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+.chat-msg { font-size: 12px; padding: 10px 12px; border-radius: 10px; line-height: 1.5; }
+.chat-msg.ai { background: var(--charcoal); border: 1px solid var(--gray-dark); align-self: flex-start; max-width: 90%; }
+.chat-msg.user { background: var(--accent-dim); border: 1px solid rgba(200,169,110,0.3); align-self: flex-end; max-width: 90%; color: var(--white); }
+
+.chat-input-wrap { padding: 12px; border-top: 1px solid var(--gray-dark); display: flex; gap: 8px; align-items: flex-end; }
+.chat-input {
+  flex: 1; background: var(--charcoal); border: 1px solid var(--gray-dark); border-radius: 8px;
+  color: var(--white); font-family: var(--font-body); font-size: 12px;
+  padding: 9px 12px; resize: none; max-height: 100px; min-height: 38px;
+  outline: none;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-send {
+  width: 38px; height: 38px; border-radius: 8px; flex-shrink: 0;
+  background: var(--accent); border: none; color: #0a0a0a; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+
+/* ============ TOAST ============ */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--off-black); border: 1px solid var(--gray-dark);
+  border-radius: 8px; padding: 10px 18px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+  opacity: 0; pointer-events: none; transition: all 0.25s;
+  white-space: nowrap; z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { border-color: rgba(46,171,94,0.4); color: #5dd68a; }
+.toast.error { border-color: rgba(224,60,49,0.4); color: #f07070; }
+
+/* ============ PRESET CHIP INFO BUTTON ============ */
+.preset-chip { position: relative; padding-right: 30px; }
+.preset-info-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--gray-dark);
+  color: var(--gray-light);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.preset-info-btn:hover { border-color: var(--white); color: var(--white); background: rgba(255,255,255,0.14); }
+
+/* ============ PRESET DETAIL MODAL ============ */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.show { display: flex; }
+.modal-card {
+  width: 92%; max-width: 460px;
+  max-height: 82vh;
+  overflow-y: auto;
+  background: var(--off-black);
+  border: 1px solid var(--gray-dark);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+}
+.modal-close {
+  float: right;
+  background: none; border: none; color: var(--gray-light);
+  font-size: 18px; cursor: pointer; line-height: 1;
+}
+.modal-close:hover { color: var(--white); }
+.modal-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.modal-swatch {
+  width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+}
+.modal-title { font-family: var(--font-display); font-weight: 900; font-size: 18px; letter-spacing: 0.06em; }
+.modal-tagline { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.12em; margin-top: 2px; }
+.modal-desc {
+  font-size: 12.5px; color: var(--gray-light); line-height: 1.6;
+  margin: 14px 0 16px; font-style: italic;
+}
+.modal-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.modal-spec {
+  background: var(--charcoal); border: 1px solid var(--gray-dark);
+  border-radius: 8px; padding: 9px 11px;
+}
+.modal-spec-label { font-family: var(--font-mono); font-size: 8.5px; color: var(--gray-mid); letter-spacing: 0.1em; margin-bottom: 4px; }
+.modal-spec-value { font-size: 11.5px; color: var(--white); font-style: italic; }
+.modal-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.modal-tag {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.05em;
+  background: var(--charcoal); border: 1px solid var(--gray-dark);
+  color: var(--gray-light); border-radius: 4px; padding: 4px 8px;
+}
+.modal-palette { display: flex; align-items: center; gap: 7px; margin-bottom: 18px; }
+.modal-palette-label { font-family: var(--font-mono); font-size: 8.5px; color: var(--gray-mid); letter-spacing: 0.1em; margin-right: 2px; }
+.modal-swatch-sm { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); }
+.modal-apply-btn {
+  width: 100%; padding: 11px; border-radius: 8px; border: none;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+  font-weight: 700; cursor: pointer; text-transform: uppercase;
+}
+
+/* ============================================================
+   PHASE 1 — CONTENT EXECUTION AI
+============================================================ */
+
+/* ---- Badges: real / local / mock / needs-AI ---- */
+.badge-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.09em;
+  padding: 2px 8px; border-radius: 10px; text-transform: uppercase;
+}
+.badge-tag.local { background: rgba(59,125,232,0.1); border: 1px solid rgba(59,125,232,0.35); color: var(--blue); }
+.badge-tag.mock { background: rgba(136,136,136,0.1); border: 1px solid rgba(136,136,136,0.35); color: var(--gray-light); }
+.badge-tag.needs-ai { background: rgba(224,60,49,0.08); border: 1px solid rgba(224,60,49,0.3); color: #f07070; }
+.badge-tag.ready { background: rgba(46,171,94,0.1); border: 1px solid rgba(46,171,94,0.35); color: var(--green); }
+
+/* ---- View tab bar ---- */
+.view-tabs {
+  display: flex; gap: 2px;
+  background: var(--off-black);
+  border-bottom: 1px solid var(--gray-dark);
+  padding: 0 16px;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+.view-tab {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 11px 14px 9px;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--gray-light); cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+}
+.view-tab:hover { color: var(--white); }
+.view-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ---- View panel switching ---- */
+.view-panel { display: none; flex: 1; min-height: 0; overflow: hidden; }
+.view-panel.active { display: flex; }
+.view-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* ---- Section shell used across new views ---- */
+.section-card {
+  background: var(--off-black);
+  border: 1px solid var(--gray-dark);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.section-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+.section-title {
+  font-family: var(--font-display); font-weight: 900; font-size: 15px; letter-spacing: 0.04em;
+}
+.section-hint { font-size: 11px; color: var(--gray-light); margin-bottom: 14px; line-height: 1.5; }
+
+/* ---- Strategy form ---- */
+.strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field-group { display: flex; flex-direction: column; gap: 5px; }
+.field-group.full { grid-column: 1 / -1; }
+.field-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; color: var(--gray-light); text-transform: uppercase; }
+.field-input, .field-select, .field-textarea {
+  background: var(--charcoal); border: 1px solid var(--gray-dark); border-radius: 7px;
+  color: var(--white); font-family: var(--font-body); font-size: 12.5px;
+  padding: 9px 11px; outline: none; width: 100%;
+}
+.field-input:focus, .field-select:focus, .field-textarea:focus { border-color: var(--accent); }
+.field-textarea { resize: vertical; min-height: 60px; }
+.strategy-save-btn {
+  margin-top: 16px; padding: 11px 20px; border-radius: 8px; border: none;
+  background: var(--accent); color: #0a0a0a; font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.1em; font-weight: 700; cursor: pointer; text-transform: uppercase;
+}
+.strategy-save-btn:hover { opacity: 0.85; }
+
+/* ---- AI Director dashboard ---- */
+.director-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.director-card {
+  background: var(--charcoal); border: 1px solid var(--gray-dark); border-radius: 9px;
+  padding: 12px 13px;
+}
+.director-card-label { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em; color: var(--gray-mid); margin-bottom: 5px; text-transform: uppercase; }
+.director-card-value { font-size: 12px; color: var(--white); line-height: 1.4; }
+.director-card-value.empty { color: var(--gray-mid); font-style: italic; }
+.director-generate-btn {
+  padding: 10px 18px; border-radius: 8px; border: 1px solid var(--accent);
+  background: transparent; color: var(--accent); font-family: var(--font-mono);
+  font-size: 10.5px; letter-spacing: 0.09em; cursor: pointer; text-transform: uppercase;
+}
+.director-generate-btn:hover { background: var(--accent-dim); }
+.score-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.score-bar-label { font-family: var(--font-mono); font-size: 9.5px; color: var(--gray-light); width: 110px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.05em; }
+.score-bar-track { flex: 1; height: 6px; background: var(--charcoal); border-radius: 3px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+.score-bar-num { font-family: var(--font-mono); font-size: 10px; color: var(--white); width: 28px; text-align: right; flex-shrink: 0; }
+
+/* ---- Content Map table ---- */
+.map-table { width: 100%; border-collapse: collapse; }
+.map-table th {
+  text-align: left; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.09em;
+  color: var(--gray-light); text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid var(--gray-dark);
+}
+.map-table td {
+  padding: 9px 10px; border-bottom: 1px solid var(--gray-dark); font-size: 11.5px; vertical-align: top;
+}
+.map-table td[contenteditable="true"] { cursor: text; outline: none; }
+.map-table td[contenteditable="true"]:focus { background: var(--accent-dim); border-radius: 4px; }
+.map-table tr:hover td { background: rgba(255,255,255,0.02); }
+.map-time-cell { font-family: var(--font-mono); color: var(--accent); font-weight: 700; white-space: nowrap; }
+.map-add-row-btn {
+  margin-top: 10px; padding: 8px 14px; border-radius: 6px; border: 1px dashed var(--gray-dark);
+  background: transparent; color: var(--gray-light); font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.08em; cursor: pointer; text-transform: uppercase; width: 100%;
+}
+.map-add-row-btn:hover { border-color: var(--accent); color: var(--accent); }
+.map-del-btn { background: none; border: none; color: var(--gray-mid); cursor: pointer; font-size: 12px; }
+.map-del-btn:hover { color: var(--red); }
+
+/* ---- Sub-tables for animation/sound cues ---- */
+.cue-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.cue-table th { text-align: left; font-family: var(--font-mono); font-size: 8.5px; color: var(--gray-mid); letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--gray-dark); }
+.cue-table td { padding: 7px 8px; font-size: 11px; color: var(--gray-light); border-bottom: 1px solid var(--gray-dark); }
+.cue-table .cue-time { font-family: var(--font-mono); color: var(--accent); white-space: nowrap; }
+.cue-table .cue-reason { color: var(--gray-mid); font-style: italic; font-size: 10.5px; }
+
+/* ---- Hook analysis ---- */
+.hook-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.hook-score-btn {
+  margin-top: 4px; padding: 10px 18px; border-radius: 8px; border: none;
+  background: var(--accent); color: #0a0a0a; font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: 0.1em; font-weight: 700; cursor: pointer; text-transform: uppercase;
+}
+.hook-score-btn:hover { opacity: 0.85; }
+.hook-locked-btn {
+  margin-top: 10px; padding: 10px 18px; border-radius: 8px; border: 1px dashed var(--gray-dark);
+  background: transparent; color: var(--gray-mid); font-family: var(--font-mono);
+  font-size: 10px; letter-spacing: 0.08em; cursor: not-allowed; text-transform: uppercase; width: 100%;
+}
+
+/* ---- Timeline AI markers ---- */
+.timeline-bar { overflow: visible !important; }
+.timeline-markers { position: absolute; inset: 0; pointer-events: none; }
+.tl-marker {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  pointer-events: auto; cursor: pointer;
+}
+.tl-marker::after {
+  content: ''; position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+  width: 7px; height: 7px; border-radius: 50%;
+}
+.tl-marker.risk { background: rgba(224,60,49,0.5); }
+.tl-marker.risk::after { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.tl-marker.hook { background: rgba(46,171,94,0.5); }
+.tl-marker.hook::after { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.tl-marker.cta { background: rgba(200,169,110,0.5); }
+.tl-marker.cta::after { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.tl-marker .tl-tooltip {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--off-black); border: 1px solid var(--gray-dark); border-radius: 6px;
+  padding: 6px 9px; font-size: 9.5px; font-family: var(--font-mono);
+  white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  z-index: 20;
+}
+.tl-marker:hover .tl-tooltip { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="topbar-mark">T</div>
+    <div>
+      <div class="topbar-title">TRIAD T — AI EDITOR</div>
+      <div class="topbar-sub">POWERED BY CLAUDE</div>
+    </div>
+  </div>
+  <div class="badge-ready"><div class="badge-dot"></div>AI READY</div>
+  <div class="topbar-actions">
+    <button class="btn">← Home</button>
+    <button class="btn primary">Export</button>
+  </div>
+</div>
+
+<div class="view-tabs" id="viewTabs">
+  <button class="view-tab active" data-view="editor">Editor</button>
+  <button class="view-tab" data-view="strategy">Strategy</button>
+  <button class="view-tab" data-view="director">AI Director</button>
+  <button class="view-tab" data-view="map">Content Map</button>
+  <button class="view-tab" data-view="hook">Hook Analysis</button>
+</div>
+
+<div class="view-panel active" id="view-editor">
+<div class="main">
+
+  <!-- LEFT: MEDIA -->
+  <div class="panel-left">
+    <div class="panel-header">MEDIA</div>
+    <div class="dropzone" id="dropzone">
+      <div class="dropzone-icon">⬆</div>
+      <div class="dropzone-text">Drop files here<br>or click to browse</div>
+      <div class="dropzone-sub">MP4 · MOV · JPG · PNG</div>
+    </div>
+    <div class="panel-header" style="border-top:1px solid var(--gray-dark);">QUICK ACTIONS</div>
+    <div class="quick-actions">
+      <button class="qa-btn"><span class="qa-icon">◎</span>Analyze Footage</button>
+      <button class="qa-btn"><span class="qa-icon">✎</span>Write Caption</button>
+      <button class="qa-btn"><span class="qa-icon">◆</span>Edit Style</button>
+      <button class="qa-btn"><span class="qa-icon">▤</span>Write Script</button>
+    </div>
+  </div>
+
+  <!-- CENTER: PREVIEW -->
+  <div class="panel-center">
+    <div class="preview-wrap">
+      <div class="preview-canvas-frame" id="previewFrame">
+        <canvas id="previewCanvas" width="640" height="400"></canvas>
+        <div class="preview-style-tag" id="styleTag">OBSIDIAN</div>
+        <div class="preview-caption"><span id="captionText">Wealth is a mindset.</span></div>
+      </div>
+    </div>
+
+    <div class="timecode">00:04 / 00:22 &nbsp;·&nbsp; Clip <span id="clipStyleLabel">Obsidian</span></div>
+
+    <div class="preview-controls">
+      <button class="transport-btn" id="btnBack">⏮</button>
+      <button class="play-btn" id="btnPlay">▶</button>
+      <button class="transport-btn" id="btnFwd">⏭</button>
+    </div>
+
+    <div class="trim-toolbar">
+      <button class="trim-btn" id="setIn">⏐◄ SET IN</button>
+      <button class="trim-btn" id="setOut">►⏐ SET OUT</button>
+      <div class="trim-divider"></div>
+      <button class="trim-btn" id="splitBtn">✂ SPLIT</button>
+      <button class="trim-btn danger" id="deleteBtn">🗑 DELETE CLIP</button>
+      <div class="trim-readout">IN <span>00:00</span> · OUT <span>00:22</span></div>
+    </div>
+
+    <div class="timeline-track">
+      <div class="timeline-bar">
+        <div class="timeline-fill"></div>
+        <div class="timeline-playhead"></div>
+        <div class="timeline-markers" id="timelineMarkers"></div>
+      </div>
+    </div>
+
+    <!-- PRESET RAIL -->
+    <div class="preset-rail">
+      <div class="preset-rail-header">
+        <span class="preset-rail-title">EDIT STYLE PRESETS</span>
+        <span class="preset-rail-active" id="activeLabel" style="color:#c9a84c;">OBSIDIAN ACTIVE</span>
+      </div>
+      <div class="preset-scroll" id="presetScroll"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: AI CHAT -->
+  <div class="panel-right">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">TRIAD AI</div>
+        <div class="chat-header-sub">EDITOR ASSISTANT</div>
+      </div>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="chat-welcome">
+        Welcome to the Triad T AI Editor. Upload a video or image, then tell me what you want to do with it. I can analyze footage, suggest edits, write captions, and apply an <b>editing style preset</b> from the rail below the timeline.
+        <div class="chat-quick-grid">
+          <button class="chat-quick-btn">Analyze Footage</button>
+          <button class="chat-quick-btn">Write Caption</button>
+          <button class="chat-quick-btn">Edit Style</button>
+          <button class="chat-quick-btn">Write Script</button>
+        </div>
+      </div>
+    </div>
+    <div class="chat-input-wrap">
+      <textarea class="chat-input" id="chatInput" placeholder="Describe what you want to do with your footage..." rows="1"></textarea>
+      <button class="chat-send" id="chatSend">➤</button>
+    </div>
+  </div>
+
+</div>
+</div><!-- /view-editor -->
+
+<!-- ================= STRATEGY VIEW ================= -->
+<div class="view-panel" id="view-strategy">
+  <div class="view-scroll">
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">Content Strategy</span>
+        <span class="badge-tag local">Local · Saved This Session</span>
+      </div>
+      <p class="section-hint">Set this before editing. The AI Director, Hook Analysis, and Content Map all read from this.</p>
+      <div class="strategy-grid">
+        <div class="field-group">
+          <label class="field-label">Brand</label>
+          <select class="field-select" id="stratBrand">
+            <option>Triad T Enterprise</option>
+            <option>Holistic Trade LLC</option>
+            <option>E Money Barber Studio</option>
+            <option>Hybrid Elite</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Platform</label>
+          <select class="field-select" id="stratPlatform">
+            <option>Instagram Reels</option>
+            <option>TikTok</option>
+            <option>YouTube Shorts</option>
+            <option>YouTube Long-Form</option>
+            <option>LinkedIn</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Audience</label>
+          <input class="field-input" id="stratAudience" placeholder="e.g. Small business owners rebuilding credit">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Content Objective</label>
+          <select class="field-select" id="stratObjective">
+            <option>Authority</option>
+            <option>Education</option>
+            <option>Reach</option>
+            <option>Engagement</option>
+            <option>Leads</option>
+            <option>Conversion</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Funnel Stage</label>
+          <select class="field-select" id="stratFunnel">
+            <option>Awareness (TOFU)</option>
+            <option>Consideration (MOFU)</option>
+            <option>Conversion (BOFU)</option>
+            <option>Retention</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Topic</label>
+          <input class="field-input" id="stratTopic" placeholder="e.g. Why your credit score dropped after a hard inquiry">
+        </div>
+        <div class="field-group full">
+          <label class="field-label">Content Angle</label>
+          <input class="field-input" id="stratAngle" placeholder="e.g. Contrarian take — the banks won't tell you this">
+        </div>
+        <div class="field-group full">
+          <label class="field-label">Call To Action</label>
+          <input class="field-input" id="stratCTA" placeholder="e.g. DM 'CREDIT' to book a free audit">
+        </div>
+      </div>
+      <button class="strategy-save-btn" id="stratSaveBtn">Save Strategy</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= AI DIRECTOR VIEW ================= -->
+<div class="view-panel" id="view-director">
+  <div class="view-scroll">
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">AI Director Brief</span>
+        <button class="director-generate-btn" id="generateBriefBtn">Generate Brief</button>
+      </div>
+      <p class="section-hint">Synthesized locally from your Strategy + Hook Analysis inputs. <span class="badge-tag needs-ai">Needs AI Backend</span> for real footage-based direction.</p>
+      <div class="director-grid" id="directorGrid"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">Content Score</span>
+        <span class="badge-tag mock">Placeholder Weighting</span>
+      </div>
+      <p class="section-hint">Scored against Strategy + Content Map completeness only — not real visual/audio quality yet.</p>
+      <div id="scoreBars"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CONTENT MAP VIEW ================= -->
+<div class="view-panel" id="view-map">
+  <div class="view-scroll">
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">Content Map</span>
+        <span class="badge-tag local">Editable · Drives Timeline Markers</span>
+      </div>
+      <p class="section-hint">Chronological breakdown of the edit. Edit any cell directly. Time ranges push markers onto the Editor timeline automatically.</p>
+      <table class="map-table">
+        <thead>
+          <tr><th>Time</th><th>Purpose</th><th>Visual</th><th>Edit</th><th>Animation</th><th>Audio</th><th></th></tr>
+        </thead>
+        <tbody id="mapTableBody"></tbody>
+      </table>
+      <button class="map-add-row-btn" id="mapAddRowBtn">+ Add Row</button>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">Animation Sequence</span>
+        <span class="badge-tag mock">Data Structure · Example</span>
+      </div>
+      <p class="section-hint">Schema is ready for AI population (element, enter, duration, exit, reason, layer). Shown here as example rows.</p>
+      <table class="cue-table" id="animCueTable"></table>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">Sound Design</span>
+        <span class="badge-tag mock">Data Structure · Example</span>
+      </div>
+      <p class="section-hint">Schema ready for AI population (category, sfx, syncTo, reason). Shown here as example rows.</p>
+      <table class="cue-table" id="soundCueTable"></table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= HOOK ANALYSIS VIEW ================= -->
+<div class="view-panel" id="view-hook">
+  <div class="view-scroll">
+    <div class="section-card">
+      <div class="section-title-row">
+        <span class="section-title">Hook Engine</span>
+        <span class="badge-tag local">Local Heuristic Scoring</span>
+      </div>
+      <p class="section-hint">Scores below are computed with a simple local heuristic (length, question marks, numbers, power words) — not real AI judgment yet.</p>
+      <div class="hook-input-grid">
+        <div class="field-group"><label class="field-label">Spoken Hook</label><input class="field-input" id="hookSpoken" placeholder="First line said out loud"></div>
+        <div class="field-group"><label class="field-label">Text Hook</label><input class="field-input" id="hookText" placeholder="On-screen hook text"></div>
+        <div class="field-group"><label class="field-label">Visual Hook</label><input class="field-input" id="hookVisual" placeholder="What's shown in first 2s"></div>
+        <div class="field-group"><label class="field-label">Audio Hook</label><input class="field-input" id="hookAudio" placeholder="Sound/music at open"></div>
+      </div>
+      <button class="hook-score-btn" id="hookScoreBtn">Score This Hook</button>
+      <button class="hook-locked-btn" disabled>🔒 Suggest Stronger Hook — Requires AI Backend</button>
+      <div id="hookScores" style="margin-top:18px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PRESET DETAIL MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card" id="modalCard">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-head">
+      <div class="modal-swatch" id="modalSwatch"></div>
+      <div>
+        <div class="modal-title" id="modalTitle">OBSIDIAN</div>
+        <div class="modal-tagline" id="modalTagline">LUXURY</div>
+      </div>
+    </div>
+    <div class="modal-desc" id="modalDesc"></div>
+    <div class="modal-specs" id="modalSpecs"></div>
+    <div class="modal-tags" id="modalTags"></div>
+    <div class="modal-palette" id="modalPalette"><span class="modal-palette-label">PALETTE</span></div>
+    <button class="modal-apply-btn" id="modalApplyBtn">Apply This Style</button>
+  </div>
+</div>
+
+<script>
+// ============================================
+// PRESET DEFINITIONS
+// ============================================
+const PRESETS = [
+  { id:"velocity", name:"VELOCITY", tag:"Kinetic", accent:"#FF2D2D", secondary:"#FF6B00", bg:["#0A0A0A","#1A0000"], caption:"NO LIMITS.", captionColor:"#FF2D2D", captionBg:"rgba(0,0,0,0.3)", preview:"velocity",
+    desc:"Fast cuts, motion blur, pulse-driven energy. Built for hooks that stop the scroll.",
+    cutStyle:"Fast / 0.5–1s", capFont:"Impact / Bold", grade:"Red Punchy Contrast", energy:"🔥 Maximum",
+    tags:["Fast Cuts","Motion Blur","Kinetic Text","Zoom Punch"] },
+  { id:"blueprint", name:"BLUEPRINT", tag:"Technical", accent:"#00A3FF", secondary:"#00FFE5", bg:["#020B18","#041C35"], caption:"PRECISION BUILDS WEALTH.", captionColor:"#00A3FF", captionBg:"rgba(0,163,255,0.1)", preview:"blueprint",
+    desc:"Architectural grid lines, engineering-draft precision. Authority through structure.",
+    cutStyle:"Dynamic / 1–3s", capFont:"Monospace / Technical", grade:"Cool Technical HUD", energy:"◎ Balanced",
+    tags:["Grid Lines","Mono Type","Data Overlays","Technical HUD"] },
+  { id:"obsidian", name:"OBSIDIAN", tag:"Luxury", accent:"#C9A84C", secondary:"#F0D080", bg:["#060606","#0E0A04"], caption:"Wealth is a mindset.", captionColor:"#C9A84C", captionBg:"rgba(201,168,76,0.08)", preview:"obsidian",
+    desc:"Deep black, liquid gold details, silence between cuts. Premium beyond premium.",
+    cutStyle:"Slow Burns / 4–8s", capFont:"Serif / Elegant Spaced", grade:"Dark Gold Lux", energy:"🤫 Minimal",
+    tags:["Gold Accents","Slow Burns","Luxury Type","Silence Cuts"] },
+  { id:"cipher", name:"CIPHER", tag:"Cyber", accent:"#00FF88", secondary:"#00FFCC", bg:["#000000","#050F0A"], caption:"SYSTEM.OVERRIDE( );", captionColor:"#00FF88", captionBg:"rgba(0,255,136,0.08)", preview:"cipher",
+    desc:"Glitch, scan lines, matrix energy. For content that breaks the fourth wall.",
+    cutStyle:"Dynamic / 1–3s", capFont:"Monospace / Terminal", grade:"Green Matrix", energy:"⚡ Disruptive",
+    tags:["Glitch FX","Scan Lines","Terminal Type","Matrix Rain"] },
+  { id:"noir", name:"NOIR", tag:"Cinematic", accent:"#FFFFFF", secondary:"#AAAAAA", bg:["#080808","#141414"], caption:"The story behind the story.", captionColor:"#EEEEEE", captionBg:"rgba(255,255,255,0.06)", preview:"noir",
+    desc:"High contrast B&W, film grain, long pauses. Every frame is a still photograph.",
+    cutStyle:"Long Takes / 4–8s", capFont:"Serif / Editorial Film", grade:"B&W High Contrast", energy:"🤫 Minimal",
+    tags:["Film Grain","B&W Grade","Long Takes","Editorial"] },
+  { id:"aurora", name:"AURORA", tag:"Ethereal", accent:"#A78BFA", secondary:"#38BDF8", bg:["#050118","#0A1628"], caption:"Rise into your purpose.", captionColor:"#A78BFA", captionBg:"rgba(167,139,250,0.08)", preview:"aurora",
+    desc:"Soft aurora gradients, light leaks, silk transitions. Elevated, aspirational energy.",
+    cutStyle:"Dynamic / 1–3s", capFont:"Serif / Flowing Gradient", grade:"Cool Ethereal", energy:"✦ Ethereal",
+    tags:["Light Leaks","Aurora Grade","Silk Transitions","Glow Type"] },
+  { id:"titanium", name:"TITANIUM", tag:"Minimal", accent:"#0A0A0A", secondary:"#444444", bg:["#F8F8F8","#EFEFEF"], caption:"Less. But better.", captionColor:"#0A0A0A", captionBg:"rgba(0,0,0,0.05)", preview:"titanium",
+    desc:"Nothing wasted. Swiss grid, pure contrast, every word earns its place.",
+    cutStyle:"Measured / 2–4s", capFont:"Serif / Swiss Editorial", grade:"Neutral Clean", energy:"◎ Balanced",
+    tags:["Swiss Grid","Zero Noise","Bold Contrast","Editorial Type"] },
+  { id:"ember", name:"EMBER", tag:"Warm", accent:"#FF7A2F", secondary:"#FFB347", bg:["#0D0803","#1C0F06"], caption:"Built from fire.", captionColor:"#FF7A2F", captionBg:"rgba(255,122,47,0.08)", preview:"ember",
+    desc:"Candlelight tones, warm film grain, natural depth. Authentic and magnetic.",
+    cutStyle:"Dynamic / 1–3s", capFont:"Serif / Warm Organic", grade:"Warm Cinematic", energy:"🌅 Warm",
+    tags:["Warm Grade","Film Grain","Natural Cuts","Organic Feel"] },
+];
+
+// ============================================================
+// PHASE 1 — TRIAD AI CONTENT EXECUTION ENGINE
+// Namespaced data layer. Shapes here mirror what a real AI
+// backend response will eventually populate. Anything not
+// explicitly marked "local heuristic" or "example data" is
+// plain user input persisted only for this session.
+// ============================================================
+const TriadAI = {
+  totalDuration: 22, // seconds — matches existing mock timecode
+
+  strategy: {
+    brand: "", platform: "", audience: "", objective: "",
+    funnel: "", topic: "", angle: "", cta: "", saved: false
+  },
+
+  hookAnalysis: {
+    spoken: "", text: "", visual: "", audio: "",
+    scores: null // { curiosity, specificity, clarity, relevance, credibility, scrollStop }
+  },
+
+  // Editable — drives Content Map table + timeline markers
+  contentMap: [
+    { time: "0–2s",   purpose: "Hook",    visual: "Close-up",  edit: "Punch-in",  animation: "750 graphic", audio: "Impact" },
+    { time: "2–5s",   purpose: "Tension", visual: "Screenshot",edit: "Hard cut",  animation: "DENIED",      audio: "Hit" },
+    { time: "5–12s",  purpose: "Explain", visual: "Speaker",   edit: "Jump cuts", animation: "Keywords",    audio: "Music" },
+    { time: "12–18s", purpose: "Proof",   visual: "Report",    edit: "B-roll",    animation: "Highlight",   audio: "UI SFX" }
+  ],
+
+  // Example schema only — NOT generated by AI yet. Mirrors the
+  // structure a future Motion Designer AI would output.
+  animationSequence: [
+    { time: "00:01",    element: 'Text: "750"',        enter: "Scale-in",  duration: "1.0s", exit: "Fade-out", reason: "Primary hook number — immediate visual anchor" },
+    { time: "00:02",    element: "CREDIT SCORE label",  enter: "Fade-in",   duration: "1.0s", exit: "Fade-out", reason: "Supporting context beneath primary number" },
+    { time: "00:03",    element: "DENIED stamp",        enter: "Stamp-in",  duration: "1.5s", exit: "Hold",     reason: "Emotional turn — sets up the tension beat" }
+  ],
+
+  // Example schema only — mirrors future Sound Designer AI output.
+  soundDesign: [
+    { time: "00:00",    category: "Ambience", sfx: "Room tone",     syncTo: "Clip start",      reason: "Fills silence before hook lands" },
+    { time: "00:03.05", category: "Impact",   sfx: "Hard hit",      syncTo: "DENIED stamp",    reason: "Punctuates the emotional turn" },
+    { time: "00:05",    category: "Riser",    sfx: "Tension riser", syncTo: "Cut to speaker",  reason: "Bridges tension beat into explanation" }
+  ],
+
+  // Placeholder score categories — see scoreCategories() below.
+  contentScore: null
+};
+
+// ---------------- VIEW TAB SWITCHING ----------------
+document.querySelectorAll('.view-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view-panel').forEach(v => v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    if (tab.dataset.view === 'director') renderDirector();
+    if (tab.dataset.view === 'map') { renderContentMap(); renderCueTables(); }
+    if (tab.dataset.view === 'hook') renderHookScores();
+  });
+});
+
+// ---------------- CONTENT STRATEGY ----------------
+document.getElementById('stratSaveBtn').addEventListener('click', () => {
+  TriadAI.strategy = {
+    brand: document.getElementById('stratBrand').value,
+    platform: document.getElementById('stratPlatform').value,
+    audience: document.getElementById('stratAudience').value,
+    objective: document.getElementById('stratObjective').value,
+    funnel: document.getElementById('stratFunnel').value,
+    topic: document.getElementById('stratTopic').value,
+    angle: document.getElementById('stratAngle').value,
+    cta: document.getElementById('stratCTA').value,
+    saved: true
+  };
+  showToast('Content strategy saved', 'success');
+});
+
+// ---------------- AI DIRECTOR ----------------
+function renderDirector() {
+  const s = TriadAI.strategy;
+  const h = TriadAI.hookAnalysis;
+  const grid = document.getElementById('directorGrid');
+  const rows = [
+    { label: 'Objective', value: s.objective },
+    { label: 'Audience', value: s.audience },
+    { label: 'Funnel Stage', value: s.funnel },
+    { label: 'Hook (Spoken)', value: h.spoken },
+    { label: 'Core Message', value: s.topic },
+    { label: 'Content Angle', value: s.angle },
+    { label: 'Editing Direction', value: activePreset ? activePreset.name + ' — ' + activePreset.desc : '' },
+    { label: 'Animation Direction', value: TriadAI.animationSequence.length + ' cues staged (example data)' },
+    { label: 'Sound Direction', value: TriadAI.soundDesign.length + ' cues staged (example data)' },
+    { label: 'CTA', value: s.cta },
+  ];
+  grid.innerHTML = rows.map(r => `
+    <div class="director-card">
+      <div class="director-card-label">${r.label}</div>
+      <div class="director-card-value ${r.value ? '' : 'empty'}">${r.value || 'Not set — fill in Strategy or Hook Analysis'}</div>
+    </div>
+  `).join('');
+  renderScoreBars();
+}
+
+function scoreCategories() {
+  const s = TriadAI.strategy;
+  const h = TriadAI.hookAnalysis;
+  // Local placeholder weighting — presence-based, not quality-based.
+  // Real scoring requires footage/audio analysis via AI backend.
+  return [
+    { label: 'Hook', value: h.scores ? h.scores.overall : 0, color: 'var(--green)' },
+    { label: 'Strategy Completeness', value: s.saved ? 100 : 0, color: 'var(--blue)' },
+    { label: 'Content Map Coverage', value: Math.min(100, TriadAI.contentMap.length * 20), color: 'var(--accent)' },
+    { label: 'Animation Plan', value: TriadAI.animationSequence.length ? 40 : 0, color: 'var(--accent)' },
+    { label: 'Sound Design Plan', value: TriadAI.soundDesign.length ? 40 : 0, color: 'var(--accent)' },
+    { label: 'Visual Style Set', value: activePreset ? 100 : 0, color: 'var(--green)' },
+  ];
+}
+function renderScoreBars() {
+  const el = document.getElementById('scoreBars');
+  el.innerHTML = scoreCategories().map(c => `
+    <div class="score-bar-row">
+      <div class="score-bar-label">${c.label}</div>
+      <div class="score-bar-track"><div class="score-bar-fill" style="width:${c.value}%;background:${c.color}"></div></div>
+      <div class="score-bar-num">${c.value}</div>
+    </div>
+  `).join('');
+}
+document.getElementById('generateBriefBtn').addEventListener('click', () => {
+  renderDirector();
+  showToast('Director brief synthesized from local data', 'success');
+});
+
+// ---------------- CONTENT MAP ----------------
+function renderContentMap() {
+  const body = document.getElementById('mapTableBody');
+  body.innerHTML = TriadAI.contentMap.map((row, i) => `
+    <tr data-i="${i}">
+      <td class="map-time-cell" contenteditable="true" data-field="time">${row.time}</td>
+      <td contenteditable="true" data-field="purpose">${row.purpose}</td>
+      <td contenteditable="true" data-field="visual">${row.visual}</td>
+      <td contenteditable="true" data-field="edit">${row.edit}</td>
+      <td contenteditable="true" data-field="animation">${row.animation}</td>
+      <td contenteditable="true" data-field="audio">${row.audio}</td>
+      <td><button class="map-del-btn" data-i="${i}">✕</button></td>
+    </tr>
+  `).join('');
+
+  body.querySelectorAll('td[contenteditable]').forEach(cell => {
+    cell.addEventListener('blur', () => {
+      const tr = cell.closest('tr');
+      const i = +tr.dataset.i;
+      const field = cell.dataset.field;
+      TriadAI.contentMap[i][field] = cell.textContent.trim();
+      renderTimelineMarkers();
+    });
+  });
+  body.querySelectorAll('.map-del-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      TriadAI.contentMap.splice(+btn.dataset.i, 1);
+      renderContentMap();
+      renderTimelineMarkers();
+    });
+  });
+  renderTimelineMarkers();
+}
+document.getElementById('mapAddRowBtn').addEventListener('click', () => {
+  TriadAI.contentMap.push({ time: "0–0s", purpose: "", visual: "", edit: "", animation: "", audio: "" });
+  renderContentMap();
+});
+
+function renderCueTables() {
+  const animEl = document.getElementById('animCueTable');
+  animEl.innerHTML = `<tr><th>Time</th><th>Element</th><th>Enter</th><th>Duration</th><th>Exit</th><th>Reason</th></tr>` +
+    TriadAI.animationSequence.map(a => `
+      <tr><td class="cue-time">${a.time}</td><td>${a.element}</td><td>${a.enter}</td><td>${a.duration}</td><td>${a.exit}</td><td class="cue-reason">${a.reason}</td></tr>
+    `).join('');
+
+  const soundEl = document.getElementById('soundCueTable');
+  soundEl.innerHTML = `<tr><th>Time</th><th>Category</th><th>SFX</th><th>Sync To</th><th>Reason</th></tr>` +
+    TriadAI.soundDesign.map(s => `
+      <tr><td class="cue-time">${s.time}</td><td>${s.category}</td><td>${s.sfx}</td><td>${s.syncTo}</td><td class="cue-reason">${s.reason}</td></tr>
+    `).join('');
+}
+
+// Parses "5–12s" style ranges into { start, end } seconds
+function parseTimeRange(str) {
+  const m = str.match(/(\d+(\.\d+)?)\s*[–-]\s*(\d+(\.\d+)?)/);
+  if (!m) return null;
+  return { start: parseFloat(m[1]), end: parseFloat(m[3]) };
+}
+
+function renderTimelineMarkers() {
+  const container = document.getElementById('timelineMarkers');
+  if (!container) return;
+  container.innerHTML = '';
+  TriadAI.contentMap.forEach(row => {
+    const range = parseTimeRange(row.time);
+    if (!range) return;
+    const pct = (range.start / TriadAI.totalDuration) * 100;
+    const marker = document.createElement('div');
+    const isHook = /hook/i.test(row.purpose);
+    const isCta = /cta|proof/i.test(row.purpose);
+    marker.className = 'tl-marker ' + (isHook ? 'hook' : isCta ? 'cta' : 'risk');
+    marker.style.left = Math.min(98, pct) + '%';
+    marker.innerHTML = `<div class="tl-tooltip">${row.time} — ${row.purpose || 'Untitled'}</div>`;
+    container.appendChild(marker);
+  });
+}
+
+// ---------------- HOOK ANALYSIS (local heuristic) ----------------
+function scoreHookHeuristic(text) {
+  if (!text || !text.trim()) return { curiosity: 0, specificity: 0, clarity: 0, relevance: 0, credibility: 0, scrollStop: 0, overall: 0 };
+  const len = text.length;
+  const hasNumber = /\d/.test(text);
+  const hasQuestion = /\?/.test(text);
+  const powerWords = /(never|secret|denied|mistake|truth|stop|why|how|nobody|warning)/i.test(text);
+  const curiosity = Math.min(100, (hasQuestion ? 35 : 10) + (powerWords ? 35 : 0) + Math.min(30, len / 2));
+  const specificity = Math.min(100, (hasNumber ? 45 : 10) + Math.min(55, len));
+  const clarity = Math.min(100, len > 8 && len < 90 ? 80 : 45);
+  const relevance = TriadAI.strategy.topic ? Math.min(100, 50 + (text.toLowerCase().includes(TriadAI.strategy.topic.toLowerCase().split(' ')[0] || '') ? 40 : 0)) : 50;
+  const credibility = Math.min(100, hasNumber ? 65 : 40);
+  const scrollStop = Math.round((curiosity + specificity + clarity) / 3);
+  const overall = Math.round((curiosity + specificity + clarity + relevance + credibility + scrollStop) / 6);
+  return { curiosity: Math.round(curiosity), specificity: Math.round(specificity), clarity: Math.round(clarity), relevance: Math.round(relevance), credibility: Math.round(credibility), scrollStop, overall };
+}
+
+document.getElementById('hookScoreBtn').addEventListener('click', () => {
+  TriadAI.hookAnalysis.spoken = document.getElementById('hookSpoken').value;
+  TriadAI.hookAnalysis.text = document.getElementById('hookText').value;
+  TriadAI.hookAnalysis.visual = document.getElementById('hookVisual').value;
+  TriadAI.hookAnalysis.audio = document.getElementById('hookAudio').value;
+  const combined = [TriadAI.hookAnalysis.spoken, TriadAI.hookAnalysis.text].filter(Boolean).join(' ');
+  TriadAI.hookAnalysis.scores = scoreHookHeuristic(combined);
+  renderHookScores();
+  showToast('Hook scored (local heuristic)', 'success');
+});
+
+function renderHookScores() {
+  const el = document.getElementById('hookScores');
+  const sc = TriadAI.hookAnalysis.scores;
+  if (!sc) { el.innerHTML = '<div class="section-hint">No hook scored yet — fill in the fields above and press Score This Hook.</div>'; return; }
+  const rows = [
+    { label: 'Curiosity', value: sc.curiosity },
+    { label: 'Specificity', value: sc.specificity },
+    { label: 'Clarity', value: sc.clarity },
+    { label: 'Relevance', value: sc.relevance },
+    { label: 'Credibility', value: sc.credibility },
+    { label: 'Scroll-Stop', value: sc.scrollStop },
+  ];
+  el.innerHTML = rows.map(r => `
+    <div class="score-bar-row">
+      <div class="score-bar-label">${r.label}</div>
+      <div class="score-bar-track"><div class="score-bar-fill" style="width:${r.value}%;background:var(--accent)"></div></div>
+      <div class="score-bar-num">${r.value}</div>
+    </div>
+  `).join('') + `<div class="section-hint" style="margin-top:10px;">Overall: <b style="color:var(--white)">${sc.overall}/100</b> — local heuristic only, not AI judgment.</div>`;
+}
+
+// ---------------- ANALYZE FOOTAGE — honest backend-required message ----------------
+function requireBackendNotice(feature) {
+  showToast(`${feature} requires AI backend connection`, 'error');
+}
+
+let activePreset = PRESETS.find(p => p.id === "obsidian");
+let isPlaying = false;
+let t = 0;
+
+const canvas = document.getElementById('previewCanvas');
+const ctx = canvas.getContext('2d');
+const styleTag = document.getElementById('styleTag');
+const captionText = document.getElementById('captionText');
+const previewCaption = document.querySelector('.preview-caption');
+const clipStyleLabel = document.getElementById('clipStyleLabel');
+const activeLabel = document.getElementById('activeLabel');
+const previewFrame = document.getElementById('previewFrame');
+
+function buildPresetChips() {
+  const rail = document.getElementById('presetScroll');
+  rail.innerHTML = '';
+  PRESETS.forEach(p => {
+    const chip = document.createElement('div');
+    chip.className = 'preset-chip' + (p.id === activePreset.id ? ' active' : '');
+    chip.dataset.id = p.id;
+    chip.innerHTML = `<div class="preset-chip-dot" style="background:${p.accent}"></div><div class="preset-chip-label">${p.name}</div><button class="preset-info-btn" data-id="${p.id}" title="View details">i</button>`;
+    chip.querySelector('.preset-chip-dot').parentElement.addEventListener('click', (e) => {
+      if (e.target.classList.contains('preset-info-btn')) return;
+      selectPreset(p.id);
+    });
+    rail.appendChild(chip);
+  });
+  // wire info buttons separately (event delegation-safe)
+  rail.querySelectorAll('.preset-info-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openModal(btn.dataset.id);
+    });
+  });
+}
+
+// ============================================
+// PRESET DETAIL MODAL
+// ============================================
+const modalOverlay = document.getElementById('modalOverlay');
+function openModal(id) {
+  const p = PRESETS.find(x => x.id === id);
+  document.getElementById('modalSwatch').style.background = `linear-gradient(135deg, ${p.bg[0]}, ${p.bg[1]})`;
+  document.getElementById('modalSwatch').style.border = `1px solid ${p.accent}66`;
+  document.getElementById('modalTitle').textContent = p.name;
+  document.getElementById('modalTitle').style.color = p.id === 'titanium' ? '#fff' : '#fff';
+  document.getElementById('modalTagline').textContent = p.tag.toUpperCase();
+  document.getElementById('modalTagline').style.color = p.accent;
+  document.getElementById('modalDesc').textContent = p.desc;
+
+  const specs = [
+    { label: 'Cut Style', value: p.cutStyle },
+    { label: 'Caption Font', value: p.capFont },
+    { label: 'Grade', value: p.grade },
+    { label: 'Energy', value: p.energy },
+  ];
+  document.getElementById('modalSpecs').innerHTML = specs.map(s =>
+    `<div class="modal-spec"><div class="modal-spec-label">${s.label.toUpperCase()}</div><div class="modal-spec-value">${s.value}</div></div>`
+  ).join('');
+
+  document.getElementById('modalTags').innerHTML = p.tags.map(t => `<span class="modal-tag">${t}</span>`).join('');
+
+  const paletteEl = document.getElementById('modalPalette');
+  paletteEl.innerHTML = '<span class="modal-palette-label">PALETTE</span>' +
+    [p.bg[0], p.bg[1], p.accent, p.secondary].map(c =>
+      `<div class="modal-swatch-sm" style="background:${c}" title="${c}"></div>`
+    ).join('');
+
+  const applyBtn = document.getElementById('modalApplyBtn');
+  applyBtn.style.background = p.accent;
+  applyBtn.style.color = p.id === 'titanium' || p.id === 'noir' ? '#0a0a0a' : '#0a0a0a';
+  applyBtn.onclick = () => { selectPreset(p.id); closeModal(); };
+
+  modalOverlay.classList.add('show');
+}
+function closeModal() { modalOverlay.classList.remove('show'); }
+document.getElementById('modalClose').addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+
+function selectPreset(id) {
+  activePreset = PRESETS.find(p => p.id === id);
+  document.querySelectorAll('.preset-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.id === id);
+  });
+  styleTag.textContent = activePreset.name;
+  styleTag.style.color = activePreset.accent;
+  styleTag.style.background = 'rgba(0,0,0,0.5)';
+  styleTag.style.border = `1px solid ${activePreset.accent}66`;
+  captionText.textContent = activePreset.caption;
+  captionText.style.color = activePreset.captionColor;
+  captionText.style.background = activePreset.captionBg;
+  captionText.style.textShadow = `0 0 10px ${activePreset.accent}55`;
+  clipStyleLabel.textContent = activePreset.name.charAt(0) + activePreset.name.slice(1).toLowerCase();
+  activeLabel.textContent = activePreset.name + ' ACTIVE';
+  activeLabel.style.color = activePreset.accent;
+  previewFrame.style.boxShadow = `0 20px 60px rgba(0,0,0,0.6), 0 0 40px ${activePreset.accent}22`;
+  previewFrame.style.borderColor = activePreset.accent + '55';
+  showToast(`Style applied: ${activePreset.name}`, 'success');
+}
+
+// ============================================
+// CANVAS PREVIEW ANIMATION (per preset)
+// ============================================
+function draw() {
+  t += 0.016;
+  const w = canvas.width, h = canvas.height;
+  const p = activePreset;
+  ctx.clearRect(0,0,w,h);
+  const grad = ctx.createLinearGradient(0,0,w,h);
+  grad.addColorStop(0, p.bg[0]);
+  grad.addColorStop(1, p.bg[1]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,w,h);
+
+  if (p.preview === "velocity") {
+    for (let i=0;i<14;i++){
+      const y = ((i/14)*h + (t*80*(i%3===0?1:-0.5)))%h;
+      ctx.strokeStyle = `rgba(255,45,45,${0.05+Math.sin(t*3+i)*0.04})`;
+      ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(0,((y%h)+h)%h); ctx.lineTo(w,(((y+30)%h)+h)%h); ctx.stroke();
+    }
+    if (Math.sin(t*10)>0.9){ ctx.fillStyle="rgba(255,80,0,0.12)"; ctx.fillRect(0,0,w,h); }
+  }
+  if (p.preview === "blueprint") {
+    ctx.strokeStyle="rgba(0,163,255,0.12)"; ctx.lineWidth=0.5;
+    for(let x=0;x<w;x+=24){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke(); }
+    for(let y=0;y<h;y+=24){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke(); }
+    const scanY = (t*40)%h;
+    const sg = ctx.createLinearGradient(0,scanY-6,0,scanY+6);
+    sg.addColorStop(0,"rgba(0,163,255,0)"); sg.addColorStop(0.5,"rgba(0,163,255,0.35)"); sg.addColorStop(1,"rgba(0,163,255,0)");
+    ctx.fillStyle=sg; ctx.fillRect(0,scanY-6,w,12);
+  }
+  if (p.preview === "obsidian") {
+    for(let i=0;i<26;i++){
+      const px=(Math.sin(t*0.3+i*1.7)*0.5+0.5)*w;
+      const py=(Math.cos(t*0.2+i*2.3)*0.5+0.5)*h;
+      const size=1+Math.sin(t*2+i)*0.6;
+      ctx.fillStyle=`rgba(201,168,76,${0.15+Math.sin(t*1.5+i*0.8)*0.1})`;
+      ctx.beginPath(); ctx.arc(px,py,size,0,Math.PI*2); ctx.fill();
+    }
+  }
+  if (p.preview === "cipher") {
+    const chars="01ABCDEF<>/{}[]";
+    ctx.font="11px monospace";
+    for(let i=0;i<40;i++){
+      const col=(i*16)%w;
+      const row=((t*40*((i%3)+0.5)+i*22)%(h+20))-10;
+      ctx.fillStyle=`rgba(0,255,136,${0.05+(i%5===0?0.2:0)})`;
+      ctx.fillText(chars[Math.floor(t*5+i)%chars.length],col,row);
+    }
+    for(let y=0;y<h;y+=4){ ctx.fillStyle="rgba(0,0,0,0.12)"; ctx.fillRect(0,y,w,1); }
+  }
+  if (p.preview === "noir") {
+    const id = ctx.getImageData(0,0,w,h);
+    for(let i=0;i<id.data.length;i+=4){
+      const n=(Math.random()-0.5)*20;
+      id.data[i]=Math.min(255,Math.max(0,id.data[i]+n));
+      id.data[i+1]=id.data[i]; id.data[i+2]=id.data[i];
+    }
+    ctx.putImageData(id,0,0);
+    const vig=ctx.createRadialGradient(w/2,h/2,h*0.2,w/2,h/2,h*0.9);
+    vig.addColorStop(0,"rgba(0,0,0,0)"); vig.addColorStop(1,"rgba(0,0,0,0.55)");
+    ctx.fillStyle=vig; ctx.fillRect(0,0,w,h);
+  }
+  if (p.preview === "aurora") {
+    const colors=["rgba(167,139,250,","rgba(56,189,248,","rgba(110,231,183,"];
+    for(let band=0;band<3;band++){
+      for(let x=0;x<w;x+=3){
+        const wave=Math.sin(x*0.03+t*0.8+band*2)*20+h*(0.3+band*0.12);
+        ctx.strokeStyle=colors[band]+(0.05+Math.sin(t*0.5+band)*0.02)+")";
+        ctx.lineWidth=8;
+        ctx.beginPath(); ctx.moveTo(x,wave); ctx.lineTo(x+3,wave+Math.sin(x*0.06+t)*4); ctx.stroke();
+      }
+    }
+  }
+  if (p.preview === "titanium") {
+    ctx.strokeStyle="rgba(0,0,0,0.06)"; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,h*0.5); ctx.lineTo(w,h*0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w*0.5,0); ctx.lineTo(w*0.5,h); ctx.stroke();
+    const dx=w*0.5+Math.sin(t*0.8)*w*0.28, dy=h*0.5+Math.cos(t*0.5)*h*0.22;
+    ctx.fillStyle="rgba(0,0,0,0.65)"; ctx.beginPath(); ctx.arc(dx,dy,4,0,Math.PI*2); ctx.fill();
+  }
+  if (p.preview === "ember") {
+    for(let i=0;i<30;i++){
+      const ex=(Math.sin(t*0.3+i*1.4)*0.5+0.5)*w;
+      const ey=h-((t*20*(0.5+(i%3)*0.3)+i*22)%(h+10));
+      const colors=["255,122,47","255,179,71","255,80,20"];
+      ctx.fillStyle=`rgba(${colors[i%3]},${0.12+Math.sin(t*2+i)*0.1})`;
+      ctx.beginPath(); ctx.arc(ex,ey,1.2+Math.sin(t+i)*0.6,0,Math.PI*2); ctx.fill();
+    }
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+
+// ============================================
+// UI WIRES
+// ============================================
+buildPresetChips();
+selectPreset('obsidian');
+
+document.getElementById('btnPlay').addEventListener('click', function(){
+  isPlaying = !isPlaying;
+  this.textContent = isPlaying ? '⏸' : '▶';
+  showToast(isPlaying ? 'Playing' : 'Paused');
+});
+document.getElementById('setIn').addEventListener('click', ()=> showToast('In point set'));
+document.getElementById('setOut').addEventListener('click', ()=> showToast('Out point set'));
+document.getElementById('splitBtn').addEventListener('click', ()=> showToast('Clip split at playhead'));
+document.getElementById('deleteBtn').addEventListener('click', ()=> showToast('Clip deleted', 'error'));
+document.getElementById('dropzone').addEventListener('click', ()=> showToast('File browser would open here'));
+
+// Quick action buttons — honest about what's real vs. needs backend
+document.querySelectorAll('.qa-btn, .chat-quick-btn').forEach(btn => {
+  const label = btn.textContent.trim();
+  if (label === 'Analyze Footage') {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); requireBackendNotice('Footage analysis'); });
+  } else if (label === 'Write Script') {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); requireBackendNotice('Script writing'); });
+  }
+});
+
+// Initialize Phase 1 views
+renderContentMap();
+renderCueTables();
+renderHookScores();
+
+const chatInput = document.getElementById('chatInput');
+const chatBody = document.getElementById('chatBody');
+chatInput.addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
+function sendMessage(){
+  const val = chatInput.value.trim();
+  if(!val) return;
+  const userMsg = document.createElement('div');
+  userMsg.className = 'chat-msg user';
+  userMsg.textContent = val;
+  chatBody.appendChild(userMsg);
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  chatBody.scrollTop = chatBody.scrollHeight;
+  setTimeout(()=>{
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'chat-msg ai';
+    aiMsg.textContent = `Got it — I'll factor that into your ${activePreset.name.toLowerCase()} style edit.`;
+    chatBody.appendChild(aiMsg);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }, 500);
+}
+document.getElementById('chatSend').addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+document.querySelectorAll('.chat-quick-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ chatInput.value = btn.textContent + ': '; chatInput.focus(); });
+});
+
+// ============================================
+// TOAST
+// ============================================
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function showToast(msg, type=''){
+  toastEl.textContent = msg;
+  toastEl.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
