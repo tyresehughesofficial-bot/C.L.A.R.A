@@ -1398,6 +1398,20 @@ function draw() {
 draw();
 
 // ============================================
+// TOAST
+// ============================================
+// Declared before UI WIRES: selectPreset() below calls showToast() during
+// init, and `const toastEl` must be initialized by then (TDZ).
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function showToast(msg, type=''){
+  toastEl.textContent = msg;
+  toastEl.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2200);
+}
+
+// ============================================
 // UI WIRES
 // ============================================
 buildPresetChips();
@@ -1458,18 +1472,6 @@ chatInput.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey){
 document.querySelectorAll('.chat-quick-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{ chatInput.value = btn.textContent + ': '; chatInput.focus(); });
 });
-
-// ============================================
-// TOAST
-// ============================================
-const toastEl = document.getElementById('toast');
-let toastTimer;
-function showToast(msg, type=''){
-  toastEl.textContent = msg;
-  toastEl.className = `toast show ${type}`;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> toastEl.classList.remove('show'), 2200);
-}
 </script>
 </body>
 </html>
