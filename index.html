@@ -7,9 +7,9 @@
 <style>
 :root {
   --black: #080808;
-  --off-black: #111;
-  --charcoal: #1a1a1a;
-  --gray-dark: #2a2a2a;
+  --off-black: #14110a;
+  --charcoal: #1c1810;
+  --gray-dark: #37301d;
   --gray-mid: #555;
   --gray-light: #888;
   --white: #f0ece4;
@@ -30,8 +30,9 @@ html, body { height: 100%; overflow: hidden; }
 body {
   background-color: var(--black);
   background-image:
-    radial-gradient(130% 55% at 50% -12%, rgba(216,178,106,0.34), rgba(216,178,106,0) 62%),
-    linear-gradient(180deg, #33250c 0%, #1b1307 26%, #0b0a07 58%, #040404 100%);
+    radial-gradient(175% 88% at 50% -24%, rgba(255,216,132,0.5), rgba(255,216,132,0) 68%),
+    radial-gradient(120% 52% at 50% -8%, rgba(246,221,154,0.34), rgba(246,221,154,0) 64%),
+    linear-gradient(180deg, #77571d 0%, #4a3512 20%, #241a09 46%, #0c0905 72%, #020202 100%);
   background-attachment: fixed;
   color: var(--white);
   font-family: var(--font-body);
@@ -44,28 +45,31 @@ body {
 .bg-grid {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background-image:
-    linear-gradient(rgba(240,208,128,0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(240,208,128,0.16) 1px, transparent 1px),
-    linear-gradient(rgba(240,208,128,0.055) 3px, transparent 3px),
-    linear-gradient(90deg, rgba(240,208,128,0.055) 3px, transparent 3px),
-    linear-gradient(rgba(200,169,110,0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200,169,110,0.07) 1px, transparent 1px);
-  background-size: 176px 176px, 176px 176px, 176px 176px, 176px 176px, 44px 44px, 44px 44px;
-  background-position: 0 0, 0 0, 0 -1px, -1px 0, 0 0, 0 0;
-  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 48%, rgba(0,0,0,0.8));
-  mask-image: linear-gradient(180deg, rgba(0,0,0,0.95), rgba(0,0,0,0.45) 48%, rgba(0,0,0,0.8));
-  animation: clara-grid-drift 90s linear infinite;
+    radial-gradient(circle, rgba(255,228,150,0.55) 1.1px, transparent 2px),
+    radial-gradient(circle, rgba(255,228,150,0.16) 3.2px, transparent 4.4px),
+    linear-gradient(rgba(255,224,146,0.20) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,224,146,0.20) 1px, transparent 1px),
+    linear-gradient(rgba(255,224,146,0.06) 3px, transparent 3px),
+    linear-gradient(90deg, rgba(255,224,146,0.06) 3px, transparent 3px),
+    linear-gradient(rgba(224,192,120,0.085) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(224,192,120,0.085) 1px, transparent 1px);
+  background-size: 110px 110px, 110px 110px, 110px 110px, 110px 110px, 110px 110px, 110px 110px, 22px 22px, 22px 22px;
+  background-position: -55px -55px, -55px -55px, 0 0, 0 0, 0 -1px, -1px 0, 0 0, 0 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.4) 66%, rgba(0,0,0,0.14) 100%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.4) 66%, rgba(0,0,0,0.14) 100%);
+  animation: clara-grid-drift 120s linear infinite;
 }
 @keyframes clara-grid-drift {
-  to { background-position: 0 176px, 176px 0, 0 175px, 175px 0, 0 176px, 176px 0; }
+  to { background-position: 55px 55px, 55px 55px, 110px 110px, 110px 110px, 110px 109px, 109px 110px, 110px 110px, 110px 110px; }
 }
 
 /* ============ TOP BAR ============ */
 .topbar {
   position: relative;
   height: 52px;
-  background: rgba(13,12,8,0.86);
-  backdrop-filter: blur(12px);
+  background: rgba(20,15,7,0.5);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border-bottom: 1px solid var(--gray-dark);
   display: flex;
   align-items: center;
@@ -167,8 +171,9 @@ body {
 
 /* ---- LEFT PANEL ---- */
 .panel-left {
-  background: rgba(14,13,9,0.84);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(20,15,7,0.38) 0%, rgba(12,10,6,0.62) 45%, rgba(6,5,3,0.78) 100%);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border-right: 1px solid var(--gray-dark);
   display: flex;
   flex-direction: column;
@@ -341,6 +346,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
   display: inline-block;
   padding: 6px 14px;
   border-radius: 6px;
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   font-weight: 700;
   transition: all 0.3s;
@@ -352,6 +358,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
   letter-spacing: 0.12em;
   padding: 4px 10px;
   border-radius: 4px;
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   transition: all 0.3s;
   pointer-events: none;
@@ -414,8 +421,9 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 .dock {
   flex-shrink: 0;
   border-top: 1px solid var(--gray-dark);
-  background: rgba(13,12,8,0.86);
-  backdrop-filter: blur(12px);
+  background: rgba(15,12,7,0.6);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   display: flex;
   flex-direction: column;
   height: clamp(230px, 34vh, 320px);
@@ -590,8 +598,9 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 
 /* ---- RIGHT PANEL ---- */
 .panel-right {
-  background: rgba(14,13,9,0.84);
-  backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(20,15,7,0.38) 0%, rgba(12,10,6,0.62) 45%, rgba(6,5,3,0.78) 100%);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border-left: 1px solid var(--gray-dark);
   display: flex;
   flex-direction: column;
@@ -730,6 +739,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 .modal-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.7);
+  -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
   display: none;
   align-items: center; justify-content: center;
@@ -782,6 +792,22 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 }
 .export-textarea:focus { border-color: var(--accent); }
 .modal-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* ============ LUXURY STUDIO GLASS SURFACES ============ */
+.qa-btn, .media-item, .brand-card, .director-card, .chat-welcome, .chat-msg.ai,
+.beat-item, .hook-candidate, .qc-list-item, .rec-card, .modal-spec, .preset-chip {
+  background: rgba(32,26,14,0.5);
+}
+.dropzone { background: rgba(32,26,14,0.28); }
+details.strat-sec { background: rgba(32,26,14,0.32); }
+.field-input, .field-select, .field-textarea, .chat-input, .job-select, .export-textarea {
+  background: rgba(12,10,6,0.66);
+}
+.chat-quick-btn { background: rgba(12,10,6,0.55); }
+.timeline-bar { background: rgba(255,232,170,0.07); }
+.score-bar-track { background: rgba(255,232,170,0.09); }
+.map-table th, .cue-table th { background: rgba(21,17,10,0.94); }
+.mk-popover, .modal-card, .toast { background: #171309; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
