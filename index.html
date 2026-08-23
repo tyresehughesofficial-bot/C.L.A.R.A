@@ -1381,13 +1381,15 @@ details.strat-sec { background: rgba(32,26,14,0.32); }
     <button class="modal-close" id="exportClose">✕</button>
     <div class="modal-title" style="margin-bottom:4px;">EXPORT</div>
     <div class="modal-tagline" style="color:var(--gray-light);">PROJECT FILE · LOCAL</div>
-    <div class="modal-desc">Video rendering requires the rendering backend (Phase 7). The project file below is real: it is the complete content execution object — strategy, hooks, map, cues, QC — and can be re-imported here.</div>
+    <div class="modal-desc"><b>Render Rough Cut</b> exports the loaded clip for real — composited at your frame ratio with the fill/reframe you set, cut ranges skipped, animation overlays burned in, source audio included. It records in realtime (a 30s cut takes ~30s) and outputs WebM or MP4 depending on the browser; music/SFX mixing joins in Phase 5, and frame-accurate server rendering later. The project JSON below is the complete execution object and can be re-imported here.</div>
     <textarea class="export-textarea" id="exportTextarea" spellcheck="false"></textarea>
     <div class="modal-row">
       <button class="btn-ghost solid" id="exportCopyBtn">Copy JSON</button>
       <button class="btn-ghost" id="importBtn">Import From Textarea</button>
-      <button class="btn-ghost" id="exportRenderBtn" title="Requires rendering backend">Render Video — Phase 7</button>
+      <button class="btn-ghost solid" id="exportRenderBtn">🎬 Render Rough Cut</button>
+      <button class="btn-ghost" id="renderSaveBtn" style="display:none">⬇ Save Video File</button>
     </div>
+    <progress id="renderProgress" max="100" value="0" style="width:100%;margin-top:10px;display:none;accent-color:var(--accent);"></progress>
     <div class="field-hint" id="exportStatus" style="margin-top:8px;"></div>
   </div>
 </div>
@@ -1654,7 +1656,7 @@ const WORKFLOW = [
   { n:13, name:"Rough cut (preview)",             check:s => !!(s.cuts && s.cuts.length), needs:null },
   { n:14, name:"AI Content QC",                   check:s => !!s.qc, needs:null },
   { n:15, name:"Human review",                    check:() => false, needs:null },
-  { n:16, name:"Export",                          check:() => false, needs:"render.export" },
+  { n:16, name:"Export (rough-cut render)",       check:s => !!s.lastRenderAt, needs:null },
   { n:17, name:"Enter/import analytics",          check:s => !!s.analytics, needs:"analytics.entry" },
   { n:18, name:"AI learns from performance",      check:() => false, needs:"learning.loop" },
 ];
@@ -1750,8 +1752,8 @@ const Capabilities = {
   "cta.check":          { name:"CTA funnel-fit + placement check", status:"HEURISTIC", unlock:null },
   "qc.readiness":       { name:"Content QC — plan readiness scan", status:"HEURISTIC", unlock:"Creative-quality scoring needs AI (Phase 6)" },
   "qc.creative":        { name:"Content QC — 27-dimension creative scoring", status:"AI", unlock:"AI backend + footage (Phase 6)" },
-  "render.roughcut":    { name:"Rough cut generation", status:"MEDIA", unlock:"Rendering engine (Phase 7)" },
-  "render.export":      { name:"Video export", status:"MEDIA", unlock:"Rendering engine (Phase 7)" },
+  "render.roughcut":    { name:"Render rough cut + overlays to a file (realtime, in-browser)", status:"LOCAL", unlock:null },
+  "render.export":      { name:"Frame-accurate server rendering (guaranteed MP4, faster-than-realtime)", status:"MEDIA", unlock:"Server render engine — the in-browser renderer works today" },
   "project.persist":    { name:"Project persistence + JSON export/import", status:"LOCAL", unlock:null },
   "chat.commands":      { name:"CLARA chat — command router", status:"LOCAL", unlock:"Natural-language understanding via AI (Phase 2)" },
   "analytics.entry":    { name:"Performance analytics entry/import", status:"SCHEMA", unlock:"Backend storage + platform APIs (Phase 8)" },
@@ -2310,6 +2312,158 @@ function renderAnimOverlays(t) {
     return '<div class="anim-item lv' + lv + " " + enterClass(a.enter) + '" ' + style + ">" + esc(text) + "</div>";
   }).join("");
 }
+
+/* ---------------- PHASE 7: EXPORT ENGINE ---------------- */
+// Realtime in-browser render: composites footage at the frame ratio
+// (fill/reframe/scale honored), skips cut ranges, draws animation
+// overlays onto the canvas, records canvas + source audio to a file.
+// Honest limits, stated in the UI: realtime speed, WebM (or MP4 where
+// the browser records it), music/SFX mixing arrives with Phase 5.
+
+// Pure geometry mirror of object-fit + object-position + scale (unit-tested).
+function computeDrawRect(srcW, srcH, dstW, dstH, fit, posX, posY, scale) {
+  const sAR = srcW / srcH, dAR = dstW / dstH;
+  const z = Math.max(1, +scale || 1);
+  if (fit === "cover") {
+    let sw, sh;
+    if (sAR > dAR) { sh = srcH; sw = srcH * dAR; } else { sw = srcW; sh = srcW / dAR; }
+    sw /= z; sh /= z;
+    const sx = (srcW - sw) * ((posX == null ? 50 : posX) / 100);
+    const sy = (srcH - sh) * ((posY == null ? 50 : posY) / 100);
+    return { sx, sy, sw, sh, dx: 0, dy: 0, dw: dstW, dh: dstH };
+  }
+  let dw, dh;
+  if (sAR > dAR) { dw = dstW; dh = dstW / sAR; } else { dh = dstH; dw = dstH * sAR; }
+  dw *= z; dh *= z;
+  return { sx: 0, sy: 0, sw: srcW, sh: srcH, dx: (dstW - dw) / 2, dy: (dstH - dh) / 2, dw, dh };
+}
+
+const RENDER_SIZES = { "9:16":[1080,1920], "1:1":[1080,1080], "4:5":[1080,1350], "16:9":[1920,1080], "16:10":[1728,1080] };
+
+function drawOverlaysToCanvas(ctx, W, H, t) {
+  const S = Store.state;
+  const active = activeAnimCues(S.animations, t);
+  if (!active.length) return;
+  const vp = Store.visualPreset();
+  const cp = Store.contentPreset();
+  const paceDur = parseFloat((MOTION_PACE[(cp && cp.motion) || "premium"].dur)) || 0.5;
+  active.forEach(a => {
+    const r = parseRange(a.time); if (!r) return;
+    const age = t - r.start;
+    const prog = Math.max(0, Math.min(1, age / Math.max(0.15, paceDur)));
+    const lv = Math.min(3, Math.max(1, +a.level || 2));
+    const text = String(a.element || "").replace(/^Text:\s*/i, "").replace(/^["“”']+|["“”']+$/g, "");
+    if (!text) return;
+    ctx.save();
+    ctx.globalAlpha = prog;
+    const cls = enterClass(a.enter);
+    let zoom = 1, dy = 0;
+    if (cls === "a-scale") zoom = 0.9 + 0.1 * prog;
+    if (cls === "a-stamp") zoom = 1.45 - 0.45 * Math.min(1, prog * 1.4);
+    if (cls === "a-snap") zoom = 0.6 + 0.46 * Math.min(1, prog * 1.35) - (prog > 0.7 ? (prog - 0.7) * 0.2 : 0);
+    if (cls === "a-slide") dy = (1 - prog) * H * 0.02;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    let cx = W / 2, cy, font, color = "rgba(240,236,228,0.92)";
+    if (lv === 1) {
+      cy = H * 0.38; font = "900 " + Math.round(W * 0.085) + "px 'Arial Narrow','Helvetica Neue',Arial,sans-serif";
+      color = vp.captionColor; ctx.shadowColor = vp.accent; ctx.shadowBlur = W * 0.02;
+    } else if (lv === 2) {
+      cy = H * 0.64; font = "700 " + Math.round(W * 0.042) + "px -apple-system,'Segoe UI',Arial,sans-serif";
+    } else {
+      ctx.textAlign = "right"; cx = W * 0.97; cy = H * 0.07;
+      font = Math.round(W * 0.024) + "px 'Courier New',monospace"; color = "rgba(240,236,228,0.75)";
+    }
+    ctx.font = font;
+    ctx.translate(cx, cy + dy); ctx.scale(zoom, zoom);
+    const m = ctx.measureText(text);
+    const padX = W * 0.02, padY = W * 0.014;
+    const bx = ctx.textAlign === "right" ? -m.width - padX : -m.width / 2 - padX;
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(bx, -W * 0.03 - padY, m.width + padX * 2, W * 0.06 + padY * 2);
+    ctx.fillStyle = color;
+    ctx.fillText(text, ctx.textAlign === "right" ? -padX * 0 : 0, 0);
+    ctx.restore();
+  });
+}
+
+const ExportEngine = {
+  busy: false,
+  pickMime() {
+    const c = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    for (const m of c) { try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (e) {} }
+    return "";
+  },
+  async render(onProgress) {
+    const S = Store.state;
+    if (this.busy) return { ok:false, detail:"A render is already running." };
+    const m = S.media.find(x => x.id === MediaEngine.activeId);
+    if (!m || m.kind !== "video" || m.stale) return { ok:false, detail:"Load a video first — the renderer exports the loaded clip." };
+    if (typeof MediaRecorder === "undefined") return { ok:false, detail:"This browser has no MediaRecorder — try Chrome/Safari." };
+    const mime = this.pickMime();
+    if (!mime) return { ok:false, detail:"No supported recording format in this browser." };
+    this.busy = true;
+    try {
+      const url = MediaEngine.urls[m.id];
+      const v = document.createElement("video");
+      v.src = url; v.preload = "auto"; v.crossOrigin = "anonymous";
+      await new Promise((res, rej) => { v.onloadedmetadata = res; v.onerror = () => rej(new Error("Could not open the video")); });
+      if (!isFinite(v.duration)) { v.currentTime = 1e7; await new Promise(res => v.ondurationchange = res); v.currentTime = 0; }
+      const dur = v.duration;
+      const size = RENDER_SIZES[S.frame.ratio] || RENDER_SIZES["16:10"];
+      const W = size[0], H = size[1];
+      const canvas = document.createElement("canvas");
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      const stream = canvas.captureStream(30);
+      let ac = null;
+      try {
+        ac = new (window.AudioContext || window.webkitAudioContext)();
+        await ac.resume();
+        const srcNode = ac.createMediaElementSource(v);
+        const dest = ac.createMediaStreamDestination();
+        srcNode.connect(dest);
+        dest.stream.getAudioTracks().forEach(tk => stream.addTrack(tk));
+      } catch (e) { /* video without decodable audio still renders, silent */ }
+      const chunks = [];
+      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+      rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+      const stopped = new Promise(res => rec.onstop = res);
+      const t0 = performance.now();
+      let raf = 0, finished = false;
+      const finish = () => { if (finished) return; finished = true; cancelAnimationFrame(raf); try { rec.stop(); } catch (e) {} try { v.pause(); } catch (e) {} };
+      const tick = () => {
+        if (finished) return;
+        const t = v.currentTime;
+        const jump = CutEngine.skipTo(S, t);
+        if (jump === null || t >= dur - 0.06 || v.ended) { finish(); return; }
+        if (jump !== t) v.currentTime = jump;
+        ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+        if (v.videoWidth) {
+          const d = computeDrawRect(v.videoWidth, v.videoHeight, W, H, S.frame.fit, S.frame.posX, S.frame.posY, S.frame.scale);
+          ctx.drawImage(v, d.sx, d.sy, d.sw, d.sh, d.dx, d.dy, d.dw, d.dh);
+        }
+        if (overlaysOn) drawOverlaysToCanvas(ctx, W, H, t);
+        if (onProgress) onProgress(Math.min(99, Math.round((t / dur) * 100)));
+        raf = requestAnimationFrame(tick);
+      };
+      rec.start(400);
+      v.currentTime = 0;
+      await v.play();
+      raf = requestAnimationFrame(tick);
+      await stopped;
+      if (ac) { try { ac.close(); } catch (e) {} }
+      const blob = new Blob(chunks, { type: mime.split(";")[0] });
+      const seconds = Math.round(((performance.now() - t0) / 1000) * 10) / 10;
+      S.lastRenderAt = new Date().toISOString();
+      Store.commit([renderDirector]);
+      if (onProgress) onProgress(100);
+      return { ok:true, blob, mime, seconds, width:W, height:H, keptDuration: CutEngine.keptDuration(S) };
+    } catch (e) {
+      return { ok:false, detail:String((e && e.message) || e) };
+    } finally { this.busy = false; }
+  },
+};
+let LastRender = null;
 
 const QcEngine = {
   run(S) {
@@ -4173,7 +4327,32 @@ function init() {
       showToast("Project imported", "success");
     } catch (e) { $("exportStatus").textContent = "Import failed: " + e.message; }
   });
-  $("exportRenderBtn").addEventListener("click", () => showToast("Video render requires the rendering engine — " + Capabilities["render.export"].unlock, "error"));
+  $("exportRenderBtn").addEventListener("click", async () => {
+    const prog = $("renderProgress"), status = $("exportStatus"), saveBtn = $("renderSaveBtn");
+    if (ExportEngine.busy) { showToast("Render already running", "error"); return; }
+    saveBtn.style.display = "none";
+    prog.style.display = "block"; prog.value = 0;
+    status.textContent = "Rendering in realtime — the page must stay open…";
+    const res = await ExportEngine.render(p => { prog.value = p; });
+    prog.style.display = "none";
+    if (!res.ok) { status.textContent = "Render failed: " + res.detail; showToast("Render failed", "error"); return; }
+    LastRender = res;
+    const mb = (res.blob.size / 1048576).toFixed(1);
+    status.textContent = "Rendered " + fmtTime(res.keptDuration) + " at " + res.width + "×" + res.height + " — " + mb + " MB " + (res.mime.includes("mp4") ? "MP4" : "WebM") + " in " + res.seconds + "s.";
+    saveBtn.style.display = "";
+    showToast("Rough cut rendered — " + mb + " MB", "success");
+    console.log("TRIAD-RENDER size=" + res.blob.size + " mime=" + res.mime + " kept=" + res.keptDuration.toFixed(1));
+  });
+  $("renderSaveBtn").addEventListener("click", () => {
+    if (!LastRender) return;
+    try {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(LastRender.blob);
+      a.download = (Store.state.name || "clara-cut").replace(/\s+/g, "-").toLowerCase() + (LastRender.mime.includes("mp4") ? ".mp4" : ".webm");
+      document.body.appendChild(a); a.click(); a.remove();
+      showToast("Saving video file…", "success");
+    } catch (e) { showToast("This sandbox blocks downloads — run CLARA from the repo to save files", "error"); }
+  });
 
   // modal + popover
   $("modalClose").addEventListener("click", closeModal);
@@ -4255,6 +4434,14 @@ if (location.hash.includes("selftest")) {
       return f.style.aspectRatio.replace(/\s/g, "") === "9/16" && f.classList.contains("vert") &&
         $("previewVideo").style.objectFit === "cover" && $("previewVideo").style.transform.includes("1.2") &&
         $("previewVideo").style.objectPosition === "30% 60%";
+    });
+    check("render geometry mirrors object-fit", () => {
+      const c1 = computeDrawRect(1920, 1080, 1080, 1920, "cover", 50, 50, 1);
+      const okCover = Math.abs(c1.sw - 607.5) < 1 && Math.abs(c1.sx - 656.25) < 1 && c1.dw === 1080 && c1.dh === 1920;
+      const c2 = computeDrawRect(1920, 1080, 1920, 1080, "contain", 50, 50, 1);
+      const okContain = c2.dw === 1920 && c2.dh === 1080 && c2.dx === 0;
+      const c3 = computeDrawRect(1920, 1080, 1080, 1920, "cover", 0, 50, 1);
+      return okCover && okContain && c3.sx === 0;
     });
     check("ratio change conforms footage", () => {
       return fitForRatio(16 / 9, "9:16") === "cover" &&

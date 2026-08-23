@@ -119,6 +119,17 @@ whole timed sequence (restraint rules enforced in the prompt), with undo.
 (Reels/TikTok/Shorts → 9:16) until you pick manually. FIT toggles
 contain/fill, and the scale slider previews punch-ins up to 160%.
 
+## Rendering (Phase 7 — in-browser)
+
+**Export → 🎬 Render Rough Cut** produces a real video file from the loaded
+clip: composited at your frame ratio with the fill/reframe you set, every
+cut range skipped, animation overlays burned in, source audio included.
+It records in realtime (a 30-second cut takes ~30 seconds; keep the page
+open) and outputs WebM or MP4 depending on the browser, then **⬇ Save
+Video File** downloads it. Honest limits, stated in the UI: music/SFX
+mixing joins in Phase 5; frame-accurate faster-than-realtime server
+rendering is a later capability and the registry says so.
+
 ## Dev
 
 Open `index.html#selftest` and check the console for `TRIAD-SELFTEST` lines —
