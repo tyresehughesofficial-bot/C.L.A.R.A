@@ -81,6 +81,30 @@ Honesty note: the claude.ai artifact preview sandbox blocks all network
 calls, so AI features work when CLARA runs from this repo — not in the
 shared preview. The app states this instead of faking results.
 
+## Footage intelligence (Phase 3)
+
+Load a video, then **Analyze Footage** (Media tab or chat). Two honest stages:
+
+- **Measured, works offline:** Web Audio finds every silence and dead-air
+  stretch in the actual audio track (plus clipping/low-level warnings and the
+  energy curve drawn under the timeline); frame differencing finds scene
+  changes. All of it lands as timeline markers with reasons.
+- **AI, with the backend connected:** CLARA samples up to 12 frames and
+  genuinely looks at them (Claude vision) alongside your transcript and the
+  measured audio — best moments, suggested removals, potential hooks (with
+  USE buttons), B-roll opportunities, framing and audio notes.
+
+**Transcripts:** paste any SRT/VTT export (CapCut, Premiere, YouTube
+captions) in the Media tab — timing is preserved, and the Content Map can
+sync dialogue from it. Built-in speech-to-text is deliberately not faked;
+the capability table says exactly that.
+
+**The rough cut is real:** cut ranges (set IN/OUT → ✂ CUT, or "cut the dead
+space", or apply EDL removals) are skipped live during playback — toggle
+ROUGH CUT in the toolbar, undo any cut. The **EDL tab** holds the AI's full
+edit decision list, every entry with its reason and a one-click apply.
+Rendering the finished file is Phase 7; until then the app never pretends.
+
 ## Dev
 
 Open `index.html#selftest` and check the console for `TRIAD-SELFTEST` lines —

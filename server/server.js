@@ -17,18 +17,34 @@ const Anthropic = require("@anthropic-ai/sdk");
 const MODEL = process.env.CLARA_MODEL || "claude-opus-5";
 const PORT = parseInt(process.env.PORT || "8787", 10);
 const APP_ROOT = path.join(__dirname, "..");
-const MAX_BODY = 1024 * 1024; // 1 MB
+const MAX_BODY = 8 * 1024 * 1024; // 8 MB — footage frames ride along as base64 images
 const MAX_PROMPT_CHARS = 400000;
 
 const client = new Anthropic();
 
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 async function runClara(body) {
-  const { system, user, task } = body || {};
+  const { system, user, task, images } = body || {};
   if (typeof system !== "string" || typeof user !== "string" || !system.trim() || !user.trim()) {
     return { status: 400, json: { ok: false, error: "bad_request", detail: "Fields 'system' and 'user' (non-empty strings) are required." } };
   }
   if (system.length + user.length > MAX_PROMPT_CHARS) {
     return { status: 413, json: { ok: false, error: "too_large", detail: "Prompt exceeds the size limit." } };
+  }
+  let content = user;
+  if (Array.isArray(images) && images.length) {
+    if (images.length > 20) {
+      return { status: 400, json: { ok: false, error: "bad_request", detail: "At most 20 frames per request." } };
+    }
+    for (const im of images) {
+      if (!im || !IMAGE_TYPES.has(im.media_type) || typeof im.data !== "string" || im.data.length > 2 * 1024 * 1024) {
+        return { status: 400, json: { ok: false, error: "bad_request", detail: "Each image needs media_type (jpeg/png/webp) and base64 data under 2 MB." } };
+      }
+    }
+    content = images
+      .map(im => ({ type: "image", source: { type: "base64", media_type: im.media_type, data: im.data } }))
+      .concat([{ type: "text", text: user }]);
   }
   try {
     const response = await client.beta.messages.create({
@@ -42,7 +58,7 @@ async function runClara(body) {
       // The stable CLARA persona/brand block is cacheable across calls;
       // volatile project state arrives in the user message.
       system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: user }],
+      messages: [{ role: "user", content }],
     });
     if (response.stop_reason === "refusal") {
       const detail = (response.stop_details && response.stop_details.explanation) || "The model declined this request.";
