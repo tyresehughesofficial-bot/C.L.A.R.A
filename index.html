@@ -4343,15 +4343,36 @@ function init() {
     showToast("Rough cut rendered — " + mb + " MB", "success");
     console.log("TRIAD-RENDER size=" + res.blob.size + " mime=" + res.mime + " kept=" + res.keptDuration.toFixed(1));
   });
-  $("renderSaveBtn").addEventListener("click", () => {
+  $("renderSaveBtn").addEventListener("click", async () => {
     if (!LastRender) return;
+    const filename = (Store.state.name || "clara-cut").replace(/\s+/g, "-").toLowerCase() + (LastRender.mime.includes("mp4") ? ".mp4" : ".webm");
+    // In the claude.ai artifact view, saving goes through the downloads
+    // capability (viewer confirms). Everywhere else, a normal download.
+    if (typeof claude !== "undefined" && claude && typeof claude.use === "function") {
+      try {
+        const downloads = await claude.use("downloads");
+        if (downloads) {
+          try {
+            await downloads.save({ filename, data: LastRender.blob });
+            showToast("Video saved", "success");
+          } catch (err) {
+            const code = err && err.code;
+            if (code === "declined") showToast("Save cancelled");
+            else if (code === "too_large") showToast("Preview saves cap at 16 MB — run CLARA from the repo for full-size files", "error");
+            else if (code === "rate_limited") showToast("A save prompt is already open — try again in a moment", "error");
+            else showToast("Save unavailable here — run CLARA from the repo to save files", "error");
+          }
+          return;
+        }
+      } catch (e) { /* fall through to anchor */ }
+    }
     try {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(LastRender.blob);
-      a.download = (Store.state.name || "clara-cut").replace(/\s+/g, "-").toLowerCase() + (LastRender.mime.includes("mp4") ? ".mp4" : ".webm");
+      a.download = filename;
       document.body.appendChild(a); a.click(); a.remove();
       showToast("Saving video file…", "success");
-    } catch (e) { showToast("This sandbox blocks downloads — run CLARA from the repo to save files", "error"); }
+    } catch (e) { showToast("Downloads are blocked here — run CLARA from the repo to save files", "error"); }
   });
 
   // modal + popover
