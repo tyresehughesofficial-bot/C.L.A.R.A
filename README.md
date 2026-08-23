@@ -122,5 +122,8 @@ contain/fill, and the scale slider previews punch-ins up to 160%.
 ## Dev
 
 Open `index.html#selftest` and check the console for `TRIAD-SELFTEST` lines —
-12 checks covering tabs, state binding, scoring, scaffolding, retention, QC,
-the chat router, markers, and export/import.
+27 checks covering tabs, state binding, scoring, scaffolding, retention, QC,
+the chat router, markers, export/import, PromptKit, transcript parsing,
+silence detection, the cut engine, EDL apply, frame settings, and the
+animation overlay engine. `#mediatest` (with the dev mock running) drives
+the full footage pipeline on real in-browser-recorded media.
