@@ -343,6 +343,60 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
   object-fit: contain; background: #000; display: none;
 }
 .preview-canvas-frame video.on, .preview-canvas-frame img.preview-still.on { display: block; }
+.anim-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.anim-item {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  text-align: center; max-width: 92%;
+  animation: aFade var(--adur, 0.4s) var(--aease, ease-out) both;
+  white-space: pre-line;
+}
+.anim-item.lv1 {
+  top: 38%; transform: translate(-50%, -50%);
+  font-family: var(--font-display); font-weight: 900; letter-spacing: 0.04em;
+  font-size: calc(var(--fu, 5px) * 9); line-height: 1.05;
+  padding: calc(var(--fu, 5px) * 1.2) calc(var(--fu, 5px) * 2.6);
+  border-radius: calc(var(--fu, 5px) * 1.2);
+  background: rgba(0,0,0,0.38);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+.anim-item.lv2 {
+  top: 64%;
+  font-family: var(--font-body); font-weight: 700;
+  font-size: calc(var(--fu, 5px) * 4.4);
+  color: rgba(240,236,228,0.92);
+  padding: calc(var(--fu, 5px) * 0.8) calc(var(--fu, 5px) * 1.8);
+  border-radius: calc(var(--fu, 5px) * 0.9);
+  background: rgba(0,0,0,0.3);
+}
+.anim-item.lv3 {
+  left: auto; right: 3%; top: 5%; transform: none;
+  font-family: var(--font-mono); font-size: calc(var(--fu, 5px) * 2.6);
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(240,236,228,0.75);
+  padding: calc(var(--fu, 5px) * 0.6) calc(var(--fu, 5px) * 1.2);
+  border: 1px solid rgba(240,236,228,0.25); border-radius: 4px;
+  background: rgba(0,0,0,0.35);
+}
+.anim-item.a-scale { animation-name: aScale; }
+.anim-item.a-stamp { animation-name: aStamp; }
+.anim-item.a-slide { animation-name: aSlide; }
+.anim-item.a-snap  { animation-name: aSnap; }
+@keyframes aFade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes aScale { from { opacity: 0; scale: 0.9; } to { opacity: 1; scale: 1; } }
+@keyframes aStamp { 0% { opacity: 0; scale: 1.45; } 60% { opacity: 1; scale: 0.97; } 100% { opacity: 1; scale: 1; } }
+@keyframes aSlide { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
+@keyframes aSnap  { 0% { opacity: 0; scale: 0.6; } 70% { opacity: 1; scale: 1.06; } 100% { opacity: 1; scale: 1; } }
+.preview-canvas-frame.vert { width: auto; height: 100%; max-width: 100%; }
+.frame-select {
+  background: var(--charcoal); border: 1px solid var(--gray-dark); border-radius: 4px;
+  color: var(--gray-light); font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.08em; padding: 6px 7px; outline: none; cursor: pointer;
+}
+.frame-select:focus, .frame-select:hover { border-color: var(--accent); color: var(--accent); }
+.trim-toolbar input[type="range"] { width: 72px; accent-color: var(--accent); }
+.scale-readout { font-family: var(--font-mono); font-size: 10px; color: var(--gray-light); width: 38px; }
+
 .preview-caption {
   position: absolute; bottom: 16px; left: 16px; right: 16px;
   text-align: center;
@@ -1063,6 +1117,7 @@ details.strat-sec { background: rgba(32,26,14,0.32); }
         <canvas id="previewCanvas" width="640" height="400"></canvas>
         <video id="previewVideo" playsinline></video>
         <img class="preview-still" id="previewStill" alt="">
+        <div class="anim-layer" id="animLayer"></div>
         <div class="preview-style-tag" id="styleTag">OBSIDIAN</div>
         <div class="preview-caption"><span id="captionText">Wealth is a mindset.</span></div>
       </div>
@@ -1077,6 +1132,17 @@ details.strat-sec { background: rgba(32,26,14,0.32); }
     </div>
 
     <div class="trim-toolbar">
+      <select class="frame-select" id="frameRatio" title="Frame aspect ratio">
+        <option value="9:16">9:16</option>
+        <option value="1:1">1:1</option>
+        <option value="4:5">4:5</option>
+        <option value="16:9">16:9</option>
+        <option value="16:10" selected>16:10</option>
+      </select>
+      <button class="trim-btn" id="fitToggle" title="How footage fills the frame">FIT: CONTAIN</button>
+      <input type="range" id="frameScale" min="100" max="160" value="100" step="1" title="Punch-in scale">
+      <span class="scale-readout" id="scaleReadout">100%</span>
+      <div class="trim-divider"></div>
       <button class="trim-btn" id="setIn">⏐◄ SET IN</button>
       <button class="trim-btn" id="setOut">►⏐ SET OUT</button>
       <div class="trim-divider"></div>
@@ -1175,8 +1241,10 @@ details.strat-sec { background: rgba(32,26,14,0.32); }
 
         <div class="dock-panel" id="dtab-animation">
           <div class="dock-toolbar">
+            <button class="btn-ghost solid" id="animGenBtn">⚡ Generate Sequence</button>
             <button class="btn-ghost" id="animAddBtn">+ Add Cue</button>
             <button class="btn-ghost" id="animClearBtn">Clear Example Rows</button>
+            <button class="btn-ghost" id="animPreviewToggle">OVERLAYS: ON</button>
             <span class="badge-tag local">Editable Sequencer</span>
             <span class="badge-tag needs-ai">AI Generation: Phase 4</span>
           </div>
@@ -1636,6 +1704,7 @@ const Models = {
     captions: Models.captionSequence(),
     cta: Models.ctaStrategy(),
     visualPresetId:"obsidian",
+    frame:{ ratio:"16:10", fit:"contain", scale:1, userSet:false },
     qc:null, analytics:null, learning:null,
     recommendations:[],
   }),
@@ -1670,7 +1739,9 @@ const Capabilities = {
   "edl.apply":          { name:"APPLY AI EDIT PLAN (auto-edit)", status:"MEDIA", unlock:"Rendering engine (Phase 7)" },
   "broll.suggest":      { name:"B-roll recommendations", status:"AI", unlock:"AI + footage index (Phase 3)" },
   "anim.sequence":      { name:"Animation sequencer (manual)", status:"LOCAL", unlock:null },
-  "anim.generate":      { name:"Animation sequence generation", status:"AI", unlock:"AI backend (Phase 4)" },
+  "anim.generate":      { name:"Animation sequence generation", status:"AI", unlock:"Connect the AI backend (top-bar badge)" },
+  "anim.preview":       { name:"Animation overlays play live on the preview", status:"LOCAL", unlock:null },
+  "frame.control":      { name:"Frame ratio, fit and punch-in scale", status:"LOCAL", unlock:null },
   "sound.sequence":     { name:"Sound design cue planning (manual)", status:"LOCAL", unlock:null },
   "sound.process":      { name:"Dialogue cleanup, ducking, mixing", status:"MEDIA", unlock:"Audio DSP (Phase 5)" },
   "captions.smart":     { name:"Caption emphasis intelligence", status:"AI", unlock:"Transcription + AI (Phase 3)" },
@@ -1749,6 +1820,7 @@ const Store = {
         this.state.media = (this.state.media || []).map(m => ({ ...m, stale:true }));
         this.state.cuts = Array.isArray(this.state.cuts) ? this.state.cuts : [];
         this.state.edl = Array.isArray(this.state.edl) ? this.state.edl : [];
+        this.state.frame = Object.assign({ ratio:"16:10", fit:"contain", scale:1, userSet:false }, this.state.frame);
         if (Array.isArray(saved.brands) && saved.brands.length) this.brands = saved.brands;
         return true;
       } catch (e) { this.state = Models.project(); return false; }
@@ -2133,6 +2205,84 @@ function syncDialogueFromTranscript(S) {
   return filled;
 }
 
+/* ---------------- PHASE 4: FRAME + ANIMATION OVERLAYS ---------------- */
+const RATIO_FOR_PLATFORM = {
+  "Instagram Reels":"9:16", "TikTok":"9:16", "YouTube Shorts":"9:16",
+  "YouTube Long Form":"16:9", "Advertisement":"16:9", "Landing-page video":"16:9", "LinkedIn":"1:1",
+};
+function applyFrameSettings() {
+  const F = Store.state.frame;
+  const frame = $("previewFrame"); if (!frame) return;
+  const parts = F.ratio.split(":").map(Number);
+  frame.style.aspectRatio = parts[0] + " / " + parts[1];
+  frame.classList.toggle("vert", parts[0] / parts[1] < 1);
+  const fit = F.fit === "cover" ? "cover" : "contain";
+  const scale = Math.max(1, Math.min(1.6, +F.scale || 1));
+  ["previewVideo", "previewStill"].forEach(id => {
+    const el = $(id); if (!el) return;
+    el.style.objectFit = fit;
+    el.style.transform = scale !== 1 ? "scale(" + scale + ")" : "";
+  });
+  const canvas = $("previewCanvas");
+  if (canvas) { canvas.width = 640; canvas.height = Math.max(2, Math.round((640 * parts[1]) / parts[0])); }
+  const sync = () => { const layer = $("animLayer"); if (layer && frame.clientWidth) layer.style.setProperty("--fu", (frame.clientWidth / 100) + "px"); };
+  sync(); requestAnimationFrame(sync);
+  const ratioSel = $("frameRatio"), fitBtn = $("fitToggle"), scaleIn = $("frameScale"), scaleOut = $("scaleReadout");
+  if (ratioSel) ratioSel.value = F.ratio;
+  if (fitBtn) fitBtn.textContent = "FIT: " + fit.toUpperCase();
+  if (scaleIn) scaleIn.value = Math.round(scale * 100);
+  if (scaleOut) scaleOut.textContent = Math.round(scale * 100) + "%";
+}
+
+function parseDurSec(s) {
+  const m = String(s == null ? "" : s).match(/(\d+(?:\.\d+)?)/);
+  return m ? Math.max(0.2, parseFloat(m[1])) : 1.5;
+}
+// Pure: which cues are on screen at time t (unit-tested).
+function activeAnimCues(cues, t) {
+  return (cues || []).filter(a => {
+    const r = parseRange(a.time); if (!r) return false;
+    const d = parseDurSec(a.duration);
+    return t >= r.start && t <= r.start + d;
+  });
+}
+let overlaysOn = true;
+let _animKey = "";
+const MOTION_PACE = {
+  premium:       { dur:"0.55s", ease:"cubic-bezier(0.22,1,0.36,1)" },
+  educational:   { dur:"0.35s", ease:"ease-out" },
+  "high-energy": { dur:"0.16s", ease:"cubic-bezier(0.34,1.56,0.64,1)" },
+  cinematic:     { dur:"0.9s",  ease:"ease" },
+};
+function enterClass(enter) {
+  const e = String(enter || "").toLowerCase();
+  if (/stamp/.test(e)) return "a-stamp";
+  if (/snap|punch|pop/.test(e)) return "a-snap";
+  if (/scale|zoom|grow/.test(e)) return "a-scale";
+  if (/slide|rise|up/.test(e)) return "a-slide";
+  return "a-fade";
+}
+function renderAnimOverlays(t) {
+  const layer = $("animLayer"); if (!layer) return;
+  if (!overlaysOn) { if (_animKey !== "off") { layer.innerHTML = ""; _animKey = "off"; } return; }
+  const S = Store.state;
+  const active = activeAnimCues(S.animations, t);
+  const key = active.map(a => a.id).join("|");
+  if (key === _animKey) return;
+  _animKey = key;
+  const cp = Store.contentPreset();
+  const pace = MOTION_PACE[(cp && cp.motion) || "premium"];
+  layer.style.setProperty("--adur", pace.dur);
+  layer.style.setProperty("--aease", pace.ease);
+  const vp = Store.visualPreset();
+  layer.innerHTML = active.map(a => {
+    const lv = Math.min(3, Math.max(1, +a.level || 2));
+    const text = String(a.element || "").replace(/^Text:\s*/i, "").replace(/^["“”']+|["“”']+$/g, "");
+    const style = lv === 1 ? 'style="color:' + vp.captionColor + ";text-shadow:0 0 " + 18 + "px " + vp.accent + '66"' : "";
+    return '<div class="anim-item lv' + lv + " " + enterClass(a.enter) + '" ' + style + ">" + esc(text) + "</div>";
+  }).join("");
+}
+
 const QcEngine = {
   run(S) {
     RetentionEngine.scan(S);
@@ -2240,7 +2390,7 @@ const Agents = {
    PromptKit builds every AI prompt from live project state; AIService
    carries it over whichever transport exists. The backend (server/) pins
    the model and holds the key; the app never fakes an AI result. */
-const AI_UNLOCKS = { "hooks.suggest":1, "map.generate":1, "angle.reason":1, "chat.commands":1, "footage.analyze":1, "edl.generate":1 };
+const AI_UNLOCKS = { "hooks.suggest":1, "map.generate":1, "angle.reason":1, "chat.commands":1, "footage.analyze":1, "edl.generate":1, "anim.generate":1 };
 
 function parseJsonLoose(text) {
   if (!text) throw new Error("empty response");
@@ -2344,6 +2494,17 @@ const PromptKit = {
         ].join("\n\n"),
         validate: d => d && Array.isArray(d.entries) && d.entries.length >= 3 && d.entries.every(e => e && typeof e.start === "number" && typeof e.end === "number" && e.kind && e.reason),
       },
+      animGenerate: {
+        user: [
+          "TASK: As the Motion Designer, build the timecoded Animation Sequence Map for this content (Parts 10-12). Respect restraint rules R3 and R5 — average no more than one cue per 2.5 seconds, and never let elements compete (Part 11 hierarchy: level 1 = one dominant primary message at a time, level 2 = supporting info, level 3 = small context labels).",
+          "MOTION LANGUAGE: " + JSON.stringify(MOTION_LANGUAGES[(Store.contentPreset() || { motion:"premium" }).motion]),
+          "SOUND CUES already planned (suggest syncTo where an entrance deserves an audio hit): " + JSON.stringify(Store.state.soundDesign.map(c => ({ time: c.time, sfx: c.sfx, layer: c.layer }))),
+          "PROJECT STATE:\n" + snap,
+          "time format \"MM:SS.s\"; duration like \"1.2s\"; enter one of: Fade, Scale-in, Slide-up, Stamp-in, Snap; exit one of: Fade, Hold; element is the literal on-screen text or a short graphic description. Every cue has a reason tied to information hierarchy, not decoration.",
+          'Respond with ONLY this JSON: {"cues":[{"time":"00:01.0","element":"","enter":"","duration":"1.0s","exit":"","level":1,"syncTo":"","reason":""}],"notes":"one short paragraph on the motion strategy"}',
+        ].join("\n\n"),
+        validate: d => d && Array.isArray(d.cues) && d.cues.length >= 2 && d.cues.every(c => c && c.time && c.element && c.reason),
+      },
       chat: {
         user: [
           "TASK: The editor says: \"" + String((extra && extra.message) || "").slice(0, 2000) + "\"",
@@ -2446,6 +2607,22 @@ async function aiRecommendAngle() {
   return { ok:true, html:"<b>Angle: " + esc(name) + ".</b> " + esc(res.data.why) +
     "<br>Angle statement set to: <b>" + esc(res.data.angleStatement) + "</b>" +
     (ru && ru.angleId ? "<br>Runner-up: " + esc((ANGLES.find(a => a.id === ru.angleId) || {}).name || ru.angleId) + " — " + esc(ru.why || "") : "") };
+}
+async function aiGenerateAnim() {
+  const S = Store.state;
+  const res = await AIService.run("animGenerate");
+  if (!res.ok) return { ok:false, html:esc(res.detail) };
+  S._animBackup = S.animations;
+  S.animations = res.data.cues.map(c => Models.animationCue({
+    time:String(c.time), element:String(c.element), enter:String(c.enter || "Fade"),
+    duration:String(c.duration || "1.0s"), exit:String(c.exit || "Fade"),
+    level:Math.min(3, Math.max(1, +c.level || 2)), syncId:String(c.syncTo || ""),
+    reason:String(c.reason || ""), source:"ai",
+  }));
+  _animKey = "~";
+  Store.commit([renderAnim, renderMarkers, renderMarkerList, renderDirector]);
+  return { ok:true, html:"<b>Animation sequence generated — " + S.animations.length + " cue(s).</b> " + esc(res.data.notes || "") +
+    "<br>They play live on the preview as the video runs (Animation tab to edit; OVERLAYS toggle to compare). Say <b>undo animations</b> to restore the previous set." };
 }
 function formatAIChat(data) {
   let html = esc(data.reply).replace(/\n/g, "<br>");
@@ -2672,7 +2849,18 @@ const Router = {
     }
     if (/b-?roll/.test(t)) return { html: this.gatedReply("broll.suggest", "creativeDirector", "It will decide per section: stay on the talking head, cut to proof, overlay a diagram, or split-screen — each with a reason.") };
     if (/cut|trim|pace|pacing|jump ?cut/.test(t)) return { html: this.gatedReply("edl.generate", "editor", "Cut decisions respond to speech cadence, sentence boundaries and emotional peaks — that requires the transcript and audio analysis first.") };
-    if (/animat|motion|graphic/.test(t)) return { html: this.gatedReply("anim.generate", "motion", "It will build a timecoded animation sequence with hierarchy levels and easing, in your brand's motion language (see Animation tab for the manual sequencer that works today).") };
+    if (/undo.*animation/.test(t)) {
+      if (S._animBackup) { S.animations = S._animBackup; delete S._animBackup; _animKey = "~"; Store.commit([renderAnim, renderMarkers]); return { html:"Previous animation set restored." }; }
+      return { html:"No generated set to undo." };
+    }
+    if (/(create|generate|make|build).*(animation|motion|sequence)/.test(t) || /animation sequence/.test(t)) {
+      if (AIService.online) return { aiTask:"animGenerate" };
+      return { html: this.gatedReply("anim.generate", "motion", "It will build a timecoded animation sequence with hierarchy levels and easing in your motion language — the manual sequencer in the Animation tab works today, and cues already play live on the preview.") };
+    }
+    if (/animat|motion|graphic/.test(t)) {
+      if (AIService.online) return { aiTask:"animGenerate" };
+      return { html: this.gatedReply("anim.generate", "motion", "It will build a timecoded animation sequence with hierarchy levels and easing, in your brand's motion language (the manual sequencer in the Animation tab works today).") };
+    }
     if (/sound|sfx|music|audio/.test(t)) return { html: this.gatedReply("sound.process", "sound", "It will plan SFX by function, sync them to animation entrances, and duck music under dialogue (the manual cue planner in the Audio tab works today).") };
     if (/caption|subtitle/.test(t)) return { html: this.gatedReply("captions.smart", "motion", "It will decide word-level emphasis, line breaks and when text becomes a standalone graphic — that needs the transcript.") };
     if (/case[- ]study version|repurpose|turn this into/.test(t)) return { html: this.gatedReply("map.generate", "strategist", "It will re-plan this content into a different structure and length from the same footage.") };
@@ -2917,6 +3105,7 @@ function renderTimecode() {
   const pct = tl.duration ? Math.min(100, (tl.playhead / tl.duration) * 100) : 0;
   $("timelinePlayhead").style.left = pct + "%";
   $("timelineFill").style.width = pct + "%";
+  renderAnimOverlays(tl.playhead);
 }
 
 function renderTrim() {
@@ -3020,7 +3209,15 @@ function renderCtaHints() {
 function bindStrategy() {
   const S = Store.state;
   const bind = (id, fn, renders) => $(id).addEventListener("change", e => { fn(e.target.value); Store.commit(renders || [renderDirector]); });
-  bind("stratPlatform", v => S.strategy.platform = v);
+  bind("stratPlatform", v => {
+    S.strategy.platform = v;
+    const suggested = RATIO_FOR_PLATFORM[v];
+    if (suggested && !S.frame.userSet && S.frame.ratio !== suggested) {
+      S.frame.ratio = suggested;
+      applyFrameSettings();
+      showToast("Frame set to " + suggested + " for " + v, "success");
+    }
+  });
   bind("stratObjective", v => S.strategy.objective = v);
   bind("stratFunnel", v => S.strategy.funnel = v, [renderDirector, renderCtaHints]);
   bind("stratDuration", v => {
@@ -3404,6 +3601,8 @@ function renderAnim() {
     S.animations.splice(+btn.dataset.i, 1);
     Store.commit([renderAnim, renderMarkers]);
   }));
+  _animKey = "~";
+  renderAnimOverlays(S.timeline.playhead);
 }
 
 /* ---------------- 17. UI — AUDIO (Parts 13–15) ---------------- */
@@ -3577,7 +3776,7 @@ function sendCommand(text) {
     let reply;
     try { reply = Router.route(text); }
     catch (e) { console.error(e); reply = { html:"That command hit an internal error: " + esc(e.message) }; }
-    const runners = { hooksReview: aiHooksReview, mapGenerate: aiGenerateMap, angleRecommend: aiRecommendAngle, footageAnalyze: analyzeFootage, edlGenerate: aiGenerateEDL, cutDeadSpace: async () => cutDeadSpaceLocal() };
+    const runners = { hooksReview: aiHooksReview, mapGenerate: aiGenerateMap, angleRecommend: aiRecommendAngle, footageAnalyze: analyzeFootage, edlGenerate: aiGenerateEDL, cutDeadSpace: async () => cutDeadSpaceLocal(), animGenerate: aiGenerateAnim };
     if (reply.aiTask && runners[reply.aiTask]) {
       const pending = document.createElement("div");
       pending.className = "chat-msg ai";
@@ -3831,6 +4030,31 @@ function init() {
   $("qaRetention").addEventListener("click", () => sendCommand("where does retention fall?"));
   $("qaQC").addEventListener("click", () => { document.querySelector('[data-rtab="qc"]').click(); sendCommand("run qc"); });
 
+  $("frameRatio").addEventListener("change", () => {
+    S.frame.ratio = $("frameRatio").value; S.frame.userSet = true;
+    applyFrameSettings(); Store.save();
+    showToast("Frame " + S.frame.ratio, "success");
+  });
+  $("fitToggle").addEventListener("click", () => {
+    S.frame.fit = S.frame.fit === "cover" ? "contain" : "cover"; S.frame.userSet = true;
+    applyFrameSettings(); Store.save();
+    showToast(S.frame.fit === "cover" ? "Footage fills the frame (crops edges)" : "Footage fits inside the frame");
+  });
+  $("frameScale").addEventListener("input", () => {
+    S.frame.scale = (+$("frameScale").value || 100) / 100;
+    applyFrameSettings();
+  });
+  $("frameScale").addEventListener("change", () => { S.frame.userSet = true; Store.save(); });
+  $("animGenBtn").addEventListener("click", () => {
+    if (!AIService.online) { openAIModal(); showToast("Connect the AI backend first", "error"); return; }
+    sendCommand("generate the animation sequence");
+  });
+  $("animPreviewToggle").addEventListener("click", () => {
+    overlaysOn = !overlaysOn;
+    $("animPreviewToggle").textContent = "OVERLAYS: " + (overlaysOn ? "ON" : "OFF");
+    _animKey = "~"; renderAnimOverlays(Store.state.timeline.playhead);
+    showToast(overlaysOn ? "Animation overlays on the preview" : "Overlays hidden");
+  });
   $("transcriptImportBtn").addEventListener("click", () => {
     const parsed = TranscriptEngine.parse($("transcriptInput").value, S.timeline.duration);
     if (!parsed) { showToast("Paste a transcript first", "error"); return; }
@@ -3919,7 +4143,7 @@ function init() {
 function initRenderAll() {
   [renderModeBadge, renderPairLabel, renderTimecode, renderTrim, renderMediaBin, renderBrand, renderStrategy, renderAssets,
    renderMap, renderHooks, renderAnim, renderAudio, renderMarkers, renderMarkerList, renderDirector, renderQC,
-   renderTranscript, renderEnergy, renderCuts, renderFootageSummary, renderEDL]
+   renderTranscript, renderEnergy, renderCuts, renderFootageSummary, renderEDL, applyFrameSettings]
     .forEach(fn => { try { fn(); } catch (e) { console.error(fn.name, e); } });
 }
 
@@ -3966,6 +4190,29 @@ if (location.hash.includes("selftest")) {
       const json = Store.exportJSON();
       const parsed = JSON.parse(json);
       return parsed.project && parsed.project.strategy.objective === "Authority" && Array.isArray(parsed.brands);
+    });
+    check("frame settings apply", () => {
+      S.frame = { ratio:"9:16", fit:"cover", scale:1.2, userSet:true };
+      applyFrameSettings();
+      const f = $("previewFrame");
+      return f.style.aspectRatio.replace(/\s/g, "") === "9/16" && f.classList.contains("vert") &&
+        $("previewVideo").style.objectFit === "cover" && $("previewVideo").style.transform.includes("1.2");
+    });
+    check("active anim cues computed", () => {
+      const cues = [{ id:"x", time:"00:01.0", duration:"1.0s" }, { id:"y", time:"00:05", duration:"2s" }];
+      return activeAnimCues(cues, 1.5).length === 1 && activeAnimCues(cues, 6)[0].id === "y" && activeAnimCues(cues, 3.5).length === 0;
+    });
+    check("anim overlays render at playhead", () => {
+      S.animations = [Models.animationCue({ time:"00:01.0", element:'Text: "750"', enter:"Scale-in", duration:"1.4s", level:1 })];
+      overlaysOn = true; _animKey = "~";
+      renderAnimOverlays(1.2);
+      const on = $("animLayer").children.length === 1 && $("animLayer").textContent.includes("750");
+      renderAnimOverlays(9);
+      return on && $("animLayer").children.length === 0;
+    });
+    check("anim prompt builds", () => {
+      const p = PromptKit.build("animGenerate", {});
+      return p.user.includes('"cues"') && p.user.includes("MOTION LANGUAGE");
     });
     check("transcript srt parses", () => {
       const p = TranscriptEngine.parse("1\n00:00:01,000 --> 00:00:02,500\nHello world\n\n2\n00:00:03,000 --> 00:00:04,000\nSecond line", 22);

@@ -105,6 +105,20 @@ ROUGH CUT in the toolbar, undo any cut. The **EDL tab** holds the AI's full
 edit decision list, every entry with its reason and a one-click apply.
 Rendering the finished file is Phase 7; until then the app never pretends.
 
+## Motion on the preview (Phase 4)
+
+Animation cues play **live on the preview** at their timecodes — scrub or
+play and they enter/exit with real motion, sized by hierarchy level
+(L1 dominant · L2 supporting · L3 context label), colored by the active
+visual preset, eased by the content style's motion language. Toggle
+OVERLAYS in the Animation tab; **⚡ Generate Sequence** has CLARA write the
+whole timed sequence (restraint rules enforced in the prompt), with undo.
+
+**Frame control:** the toolbar's ratio picker (9:16 · 1:1 · 4:5 · 16:9 ·
+16:10) reshapes the preview frame — it auto-matches your platform choice
+(Reels/TikTok/Shorts → 9:16) until you pick manually. FIT toggles
+contain/fill, and the scale slider previews punch-ins up to 160%.
+
 ## Dev
 
 Open `index.html#selftest` and check the console for `TRIAD-SELFTEST` lines —
