@@ -388,6 +388,8 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 @keyframes aSlide { from { opacity: 0; translate: 0 14px; } to { opacity: 1; translate: 0 0; } }
 @keyframes aSnap  { 0% { opacity: 0; scale: 0.6; } 70% { opacity: 1; scale: 1.06; } 100% { opacity: 1; scale: 1; } }
 .preview-canvas-frame.vert { width: auto; height: 100%; max-width: 100%; }
+.preview-canvas-frame.pannable { cursor: grab; touch-action: none; }
+.preview-canvas-frame.panning { cursor: grabbing; }
 .frame-select {
   background: var(--charcoal); border: 1px solid var(--gray-dark); border-radius: 4px;
   color: var(--gray-light); font-family: var(--font-mono); font-size: 10px;
@@ -1704,7 +1706,7 @@ const Models = {
     captions: Models.captionSequence(),
     cta: Models.ctaStrategy(),
     visualPresetId:"obsidian",
-    frame:{ ratio:"16:10", fit:"contain", scale:1, userSet:false },
+    frame:{ ratio:"16:10", fit:"contain", scale:1, posX:50, posY:50, userSet:false },
     qc:null, analytics:null, learning:null,
     recommendations:[],
   }),
@@ -1820,7 +1822,7 @@ const Store = {
         this.state.media = (this.state.media || []).map(m => ({ ...m, stale:true }));
         this.state.cuts = Array.isArray(this.state.cuts) ? this.state.cuts : [];
         this.state.edl = Array.isArray(this.state.edl) ? this.state.edl : [];
-        this.state.frame = Object.assign({ ratio:"16:10", fit:"contain", scale:1, userSet:false }, this.state.frame);
+        this.state.frame = Object.assign({ ratio:"16:10", fit:"contain", scale:1, posX:50, posY:50, userSet:false }, this.state.frame);
         if (Array.isArray(saved.brands) && saved.brands.length) this.brands = saved.brands;
         return true;
       } catch (e) { this.state = Models.project(); return false; }
@@ -2210,6 +2212,30 @@ const RATIO_FOR_PLATFORM = {
   "Instagram Reels":"9:16", "TikTok":"9:16", "YouTube Shorts":"9:16",
   "YouTube Long Form":"16:9", "Advertisement":"16:9", "Landing-page video":"16:9", "LinkedIn":"1:1",
 };
+// Pure: does the source aspect ratio need cropping to fill this frame ratio?
+function fitForRatio(srcAR, ratioStr) {
+  if (!srcAR) return "contain";
+  const p = String(ratioStr).split(":").map(Number);
+  const fAR = p[0] / p[1];
+  return Math.abs(srcAR - fAR) / fAR > 0.04 ? "cover" : "contain";
+}
+function sourceAR() {
+  const v = $("previewVideo");
+  if (v && v.classList.contains("on") && v.videoWidth) return v.videoWidth / v.videoHeight;
+  const img = $("previewStill");
+  if (img && img.classList.contains("on") && img.naturalWidth) return img.naturalWidth / img.naturalHeight;
+  return null;
+}
+// Re-conform footage to the frame: called on every ratio change and media load.
+function conformFrame(toastIt) {
+  const S = Store.state;
+  S.frame.fit = fitForRatio(sourceAR(), S.frame.ratio);
+  S.frame.posX = 50; S.frame.posY = 50;
+  applyFrameSettings();
+  if (toastIt) showToast(S.frame.fit === "cover"
+    ? "Footage fills " + S.frame.ratio + " — drag the preview to reframe, double-tap to reset"
+    : "Frame " + S.frame.ratio, "success");
+}
 function applyFrameSettings() {
   const F = Store.state.frame;
   const frame = $("previewFrame"); if (!frame) return;
@@ -2221,15 +2247,17 @@ function applyFrameSettings() {
   ["previewVideo", "previewStill"].forEach(id => {
     const el = $(id); if (!el) return;
     el.style.objectFit = fit;
+    el.style.objectPosition = (F.posX == null ? 50 : F.posX) + "% " + (F.posY == null ? 50 : F.posY) + "%";
     el.style.transform = scale !== 1 ? "scale(" + scale + ")" : "";
   });
+  frame.classList.toggle("pannable", (fit === "cover" || scale > 1.001) && !!(typeof MediaEngine !== "undefined" && MediaEngine.activeId));
   const canvas = $("previewCanvas");
   if (canvas) { canvas.width = 640; canvas.height = Math.max(2, Math.round((640 * parts[1]) / parts[0])); }
   const sync = () => { const layer = $("animLayer"); if (layer && frame.clientWidth) layer.style.setProperty("--fu", (frame.clientWidth / 100) + "px"); };
   sync(); requestAnimationFrame(sync);
   const ratioSel = $("frameRatio"), fitBtn = $("fitToggle"), scaleIn = $("frameScale"), scaleOut = $("scaleReadout");
   if (ratioSel) ratioSel.value = F.ratio;
-  if (fitBtn) fitBtn.textContent = "FIT: " + fit.toUpperCase();
+  if (fitBtn) fitBtn.textContent = "FIT: " + (fit === "cover" ? "FILL" : "SHOW ALL");
   if (scaleIn) scaleIn.value = Math.round(scale * 100);
   if (scaleOut) scaleOut.textContent = Math.round(scale * 100) + "%";
 }
@@ -2904,6 +2932,7 @@ const MediaEngine = {
       Store.state.timeline.source = "media";
       Store.state.timeline.inPoint = 0;
       Store.state.timeline.outPoint = null;
+      conformFrame(false);
       Store.commit([renderTimecode, renderMarkers, renderMediaBin, renderTrim, renderMap]);
     }
   },
@@ -2931,6 +2960,7 @@ const MediaEngine = {
       this.video.classList.add("on");
     } else {
       this.still.src = this.urls[id];
+      this.still.onload = () => conformFrame(false);
       this.still.classList.add("on");
       Store.state.timeline.source = "plan";
       Store.state.timeline.duration = Store.state.strategy.targetDuration || 22;
@@ -4032,14 +4062,41 @@ function init() {
 
   $("frameRatio").addEventListener("change", () => {
     S.frame.ratio = $("frameRatio").value; S.frame.userSet = true;
-    applyFrameSettings(); Store.save();
-    showToast("Frame " + S.frame.ratio, "success");
+    conformFrame(true); Store.save();
   });
   $("fitToggle").addEventListener("click", () => {
     S.frame.fit = S.frame.fit === "cover" ? "contain" : "cover"; S.frame.userSet = true;
+    S.frame.posX = 50; S.frame.posY = 50;
     applyFrameSettings(); Store.save();
-    showToast(S.frame.fit === "cover" ? "Footage fills the frame (crops edges)" : "Footage fits inside the frame");
+    showToast(S.frame.fit === "cover" ? "FILL — footage crops to fill the frame; drag to reframe" : "SHOW ALL — full footage letterboxed in the frame");
   });
+  // Drag-to-reframe on the preview (touch + mouse); double-tap resets.
+  (() => {
+    const frame = $("previewFrame");
+    let pan = null;
+    frame.addEventListener("pointerdown", e => {
+      if (!frame.classList.contains("pannable")) return;
+      pan = { x:e.clientX, y:e.clientY, px:S.frame.posX, py:S.frame.posY, w:Math.max(1, frame.clientWidth), h:Math.max(1, frame.clientHeight) };
+      try { frame.setPointerCapture(e.pointerId); } catch (err) {}
+      frame.classList.add("panning");
+      e.preventDefault();
+    });
+    frame.addEventListener("pointermove", e => {
+      if (!pan) return;
+      S.frame.posX = Math.max(0, Math.min(100, pan.px - ((e.clientX - pan.x) / pan.w) * 100));
+      S.frame.posY = Math.max(0, Math.min(100, pan.py - ((e.clientY - pan.y) / pan.h) * 100));
+      applyFrameSettings();
+    });
+    ["pointerup", "pointercancel"].forEach(ev => frame.addEventListener(ev, () => {
+      if (!pan) return;
+      pan = null; frame.classList.remove("panning"); Store.save();
+    }));
+    frame.addEventListener("dblclick", () => {
+      S.frame.posX = 50; S.frame.posY = 50; S.frame.scale = 1;
+      applyFrameSettings(); Store.save();
+      showToast("Reframe reset");
+    });
+  })();
   $("frameScale").addEventListener("input", () => {
     S.frame.scale = (+$("frameScale").value || 100) / 100;
     applyFrameSettings();
@@ -4192,11 +4249,19 @@ if (location.hash.includes("selftest")) {
       return parsed.project && parsed.project.strategy.objective === "Authority" && Array.isArray(parsed.brands);
     });
     check("frame settings apply", () => {
-      S.frame = { ratio:"9:16", fit:"cover", scale:1.2, userSet:true };
+      S.frame = { ratio:"9:16", fit:"cover", scale:1.2, posX:30, posY:60, userSet:true };
       applyFrameSettings();
       const f = $("previewFrame");
       return f.style.aspectRatio.replace(/\s/g, "") === "9/16" && f.classList.contains("vert") &&
-        $("previewVideo").style.objectFit === "cover" && $("previewVideo").style.transform.includes("1.2");
+        $("previewVideo").style.objectFit === "cover" && $("previewVideo").style.transform.includes("1.2") &&
+        $("previewVideo").style.objectPosition === "30% 60%";
+    });
+    check("ratio change conforms footage", () => {
+      return fitForRatio(16 / 9, "9:16") === "cover" &&
+        fitForRatio(9 / 16, "9:16") === "contain" &&
+        fitForRatio(16 / 10, "16:10") === "contain" &&
+        fitForRatio(null, "9:16") === "contain" &&
+        fitForRatio(4 / 3, "1:1") === "cover";
     });
     check("active anim cues computed", () => {
       const cues = [{ id:"x", time:"00:01.0", duration:"1.0s" }, { id:"y", time:"00:05", duration:"2s" }];
