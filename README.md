@@ -58,6 +58,29 @@ emphasis, AI hook alternatives, creative QC scoring, rendering, analytics,
 learning. Their data models ship now (`Models.*` in `index.html`); the
 phases that light them up are in `ARCHITECTURE.md`.
 
+## AI backend (Phase 2)
+
+CLARA's AI features run through a thin local backend that keeps your API key
+out of the browser and pins the model (Claude Opus 5, adaptive thinking,
+safety fallbacks enabled by default):
+
+```bash
+cd server
+npm install
+ANTHROPIC_API_KEY=sk-ant-...  npm start     # or authenticate once with `ant auth login`
+```
+
+Then open **http://localhost:8787** — CLARA loads with the top-bar badge
+green (**AI CONNECTED**). That unlocks: AI hook review with 3 stronger
+alternatives (Hooks tab), **⚡ Generate With AI** on the Content Map,
+**⚡ AI Recommend Angle** in Strategy, and free-form chat that answers with
+real creative direction grounded in your brief and brand DNA. The top-bar
+badge opens the connection panel (custom URL, test, setup steps).
+
+Honesty note: the claude.ai artifact preview sandbox blocks all network
+calls, so AI features work when CLARA runs from this repo — not in the
+shared preview. The app states this instead of faking results.
+
 ## Dev
 
 Open `index.html#selftest` and check the console for `TRIAD-SELFTEST` lines —

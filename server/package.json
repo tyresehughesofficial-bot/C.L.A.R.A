@@ -1,0 +1,13 @@
+{
+  "name": "clara-backend",
+  "version": "0.2.0",
+  "private": true,
+  "description": "CLARA AI backend — thin bridge from the CLARA app to the Anthropic API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.74.0"
+  }
+}
