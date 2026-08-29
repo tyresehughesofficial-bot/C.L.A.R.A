@@ -476,6 +476,7 @@ details.strat-sec .strat-sec-body { padding: 2px 12px 12px; }
 .trim-btn:hover { border-color: var(--accent); color: var(--accent); }
 .trim-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .trim-btn.danger:hover { border-color: var(--red); color: var(--red); }
+.trim-btn.on { border-color: var(--accent); color: var(--accent); }
 .trim-divider { width: 1px; height: 20px; background: var(--gray-dark); }
 .trim-readout { font-family: var(--font-mono); font-size: 10px; color: var(--gray-light); letter-spacing: 0.08em; margin-left: auto; }
 .trim-readout span { color: var(--accent); font-weight: 700; }
@@ -1142,6 +1143,8 @@ details.strat-sec { background: rgba(32,26,14,0.32); }
         <option value="16:10" selected>16:10</option>
       </select>
       <button class="trim-btn" id="fitToggle" title="How footage fills the frame">FIT: CONTAIN</button>
+      <button class="trim-btn" id="rotBtn" title="Rotate footage 90° — sideways clips flip upright to match the frame">↻ 0°</button>
+      <button class="trim-btn" id="mirrorBtn" title="Mirror the footage horizontally">⇋ FLIP</button>
       <input type="range" id="frameScale" min="100" max="160" value="100" step="1" title="Punch-in scale">
       <span class="scale-readout" id="scaleReadout">100%</span>
       <div class="trim-divider"></div>
@@ -1708,7 +1711,7 @@ const Models = {
     captions: Models.captionSequence(),
     cta: Models.ctaStrategy(),
     visualPresetId:"obsidian",
-    frame:{ ratio:"16:10", fit:"contain", scale:1, posX:50, posY:50, userSet:false },
+    frame:{ ratio:"16:10", fit:"contain", scale:1, posX:50, posY:50, rotate:0, mirror:false, userSet:false },
     qc:null, analytics:null, learning:null,
     recommendations:[],
   }),
@@ -1824,7 +1827,7 @@ const Store = {
         this.state.media = (this.state.media || []).map(m => ({ ...m, stale:true }));
         this.state.cuts = Array.isArray(this.state.cuts) ? this.state.cuts : [];
         this.state.edl = Array.isArray(this.state.edl) ? this.state.edl : [];
-        this.state.frame = Object.assign({ ratio:"16:10", fit:"contain", scale:1, posX:50, posY:50, userSet:false }, this.state.frame);
+        this.state.frame = Object.assign({ ratio:"16:10", fit:"contain", scale:1, posX:50, posY:50, rotate:0, mirror:false, userSet:false }, this.state.frame);
         if (Array.isArray(saved.brands) && saved.brands.length) this.brands = saved.brands;
         return true;
       } catch (e) { this.state = Models.project(); return false; }
@@ -2221,6 +2224,11 @@ function fitForRatio(srcAR, ratioStr) {
   const fAR = p[0] / p[1];
   return Math.abs(srcAR - fAR) / fAR > 0.04 ? "cover" : "contain";
 }
+// Pure: source aspect after rotation (90/270 transpose it).
+function rotatedAR(ar, rot) {
+  if (ar == null) return null;
+  return (((rot || 0) % 180) + 180) % 180 === 90 ? 1 / ar : ar;
+}
 function sourceAR() {
   const v = $("previewVideo");
   if (v && v.classList.contains("on") && v.videoWidth) return v.videoWidth / v.videoHeight;
@@ -2231,7 +2239,7 @@ function sourceAR() {
 // Re-conform footage to the frame: called on every ratio change and media load.
 function conformFrame(toastIt) {
   const S = Store.state;
-  S.frame.fit = fitForRatio(sourceAR(), S.frame.ratio);
+  S.frame.fit = fitForRatio(rotatedAR(sourceAR(), S.frame.rotate), S.frame.ratio);
   S.frame.posX = 50; S.frame.posY = 50;
   applyFrameSettings();
   if (toastIt) showToast(S.frame.fit === "cover"
@@ -2246,13 +2254,27 @@ function applyFrameSettings() {
   frame.classList.toggle("vert", parts[0] / parts[1] < 1);
   const fit = F.fit === "cover" ? "cover" : "contain";
   const scale = Math.max(1, Math.min(1.6, +F.scale || 1));
+  const rot = (((F.rotate || 0) % 360) + 360) % 360;
+  const swapped = rot % 180 !== 0;
+  const fw = frame.clientWidth, fh = frame.clientHeight;
+  const tf = (F.mirror ? "scaleX(-1) " : "") + (rot ? "rotate(" + rot + "deg) " : "") + (scale !== 1 ? "scale(" + scale + ")" : "");
   ["previewVideo", "previewStill"].forEach(id => {
     const el = $(id); if (!el) return;
     el.style.objectFit = fit;
     el.style.objectPosition = (F.posX == null ? 50 : F.posX) + "% " + (F.posY == null ? 50 : F.posY) + "%";
-    el.style.transform = scale !== 1 ? "scale(" + scale + ")" : "";
+    if (swapped && fw && fh) {
+      // Element takes the frame's transposed box, centered, then rotates into place.
+      el.style.width = fh + "px"; el.style.height = fw + "px";
+      el.style.left = ((fw - fh) / 2) + "px"; el.style.top = ((fh - fw) / 2) + "px";
+    } else {
+      el.style.width = "100%"; el.style.height = "100%";
+      el.style.left = "0"; el.style.top = "0";
+    }
+    el.style.transform = tf.trim();
   });
   frame.classList.toggle("pannable", (fit === "cover" || scale > 1.001) && !!(typeof MediaEngine !== "undefined" && MediaEngine.activeId));
+  const rotBtn = $("rotBtn"); if (rotBtn) rotBtn.textContent = "↻ " + rot + "°";
+  const mirBtn = $("mirrorBtn"); if (mirBtn) mirBtn.classList.toggle("on", !!F.mirror);
   const canvas = $("previewCanvas");
   if (canvas) { canvas.width = 640; canvas.height = Math.max(2, Math.round((640 * parts[1]) / parts[0])); }
   const sync = () => { const layer = $("animLayer"); if (layer && frame.clientWidth) layer.style.setProperty("--fu", (frame.clientWidth / 100) + "px"); };
@@ -2439,8 +2461,16 @@ const ExportEngine = {
         if (jump !== t) v.currentTime = jump;
         ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
         if (v.videoWidth) {
-          const d = computeDrawRect(v.videoWidth, v.videoHeight, W, H, S.frame.fit, S.frame.posX, S.frame.posY, S.frame.scale);
-          ctx.drawImage(v, d.sx, d.sy, d.sw, d.sh, d.dx, d.dy, d.dw, d.dh);
+          const rot = (((S.frame.rotate || 0) % 360) + 360) % 360;
+          const swapped = rot % 180 !== 0;
+          const dW = swapped ? H : W, dH = swapped ? W : H;
+          const d = computeDrawRect(v.videoWidth, v.videoHeight, dW, dH, S.frame.fit, S.frame.posX, S.frame.posY, S.frame.scale);
+          ctx.save();
+          ctx.translate(W / 2, H / 2);
+          if (S.frame.mirror) ctx.scale(-1, 1);
+          if (rot) ctx.rotate((rot * Math.PI) / 180);
+          ctx.drawImage(v, d.sx, d.sy, d.sw, d.sh, d.dx - dW / 2, d.dy - dH / 2, d.dw, d.dh);
+          ctx.restore();
         }
         if (overlaysOn) drawOverlaysToCanvas(ctx, W, H, t);
         if (onProgress) onProgress(Math.min(99, Math.round((t / dur) * 100)));
@@ -4218,6 +4248,21 @@ function init() {
     S.frame.ratio = $("frameRatio").value; S.frame.userSet = true;
     conformFrame(true); Store.save();
   });
+  $("rotBtn").addEventListener("click", () => {
+    S.frame.rotate = (((S.frame.rotate || 0) + 90) % 360);
+    S.frame.userSet = true;
+    conformFrame(false);
+    Store.save();
+    showToast("Footage rotated to " + S.frame.rotate + "° — " + (S.frame.fit === "cover" ? "fills the frame, drag to reframe" : "fits the frame"), "success");
+  });
+  $("mirrorBtn").addEventListener("click", () => {
+    S.frame.mirror = !S.frame.mirror;
+    S.frame.userSet = true;
+    applyFrameSettings();
+    Store.save();
+    showToast(S.frame.mirror ? "Footage mirrored" : "Mirror off");
+  });
+  window.addEventListener("resize", () => { try { applyFrameSettings(); } catch (e) {} });
   $("fitToggle").addEventListener("click", () => {
     S.frame.fit = S.frame.fit === "cover" ? "contain" : "cover"; S.frame.userSet = true;
     S.frame.posX = 50; S.frame.posY = 50;
@@ -4449,12 +4494,20 @@ if (location.hash.includes("selftest")) {
       return parsed.project && parsed.project.strategy.objective === "Authority" && Array.isArray(parsed.brands);
     });
     check("frame settings apply", () => {
-      S.frame = { ratio:"9:16", fit:"cover", scale:1.2, posX:30, posY:60, userSet:true };
+      S.frame = { ratio:"9:16", fit:"cover", scale:1.2, posX:30, posY:60, rotate:90, mirror:true, userSet:true };
       applyFrameSettings();
       const f = $("previewFrame");
+      const tf = $("previewVideo").style.transform;
       return f.style.aspectRatio.replace(/\s/g, "") === "9/16" && f.classList.contains("vert") &&
-        $("previewVideo").style.objectFit === "cover" && $("previewVideo").style.transform.includes("1.2") &&
-        $("previewVideo").style.objectPosition === "30% 60%";
+        $("previewVideo").style.objectFit === "cover" && tf.includes("rotate(90deg)") && tf.includes("scaleX(-1)") &&
+        tf.includes("1.2") && $("previewVideo").style.objectPosition === "30% 60%";
+    });
+    check("rotation transposes aspect", () => {
+      return Math.abs(rotatedAR(16 / 9, 90) - 9 / 16) < 0.001 &&
+        rotatedAR(16 / 9, 180) === 16 / 9 &&
+        Math.abs(rotatedAR(4 / 3, 270) - 3 / 4) < 0.001 &&
+        rotatedAR(null, 90) === null &&
+        fitForRatio(rotatedAR(9 / 16, 90), "16:9") === "contain";
     });
     check("render geometry mirrors object-fit", () => {
       const c1 = computeDrawRect(1920, 1080, 1080, 1920, "cover", 50, 50, 1);
